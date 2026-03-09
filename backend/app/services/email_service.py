@@ -26,34 +26,33 @@ SCOPES = [
 def get_gmail_service():
     """Retourne un service Gmail authentifié via OAuth2"""
     creds = None
-    token_file = Path(settings.GMAIL_TOKEN_FILE)
-    creds_file = Path(settings.GMAIL_CREDENTIALS_FILE)
+    
+    # Chemin absolu basé sur l'emplacement du fichier email_service.py
+    base_dir = Path(__file__).parent.parent.parent  # remonte jusqu'à backend/
+    token_file = base_dir / settings.GMAIL_TOKEN_FILE
+    creds_file = base_dir / settings.GMAIL_CREDENTIALS_FILE
+
+    logger.info("Cherche credentials", path=str(creds_file), exists=creds_file.exists())
 
     # Charge le token existant si disponible
     if token_file.exists():
         creds = Credentials.from_authorized_user_file(str(token_file), SCOPES)
 
-    # Si pas de token valide, lance le flux OAuth2
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            logger.info("Token Gmail rafraîchi")
         else:
             if not creds_file.exists():
                 raise FileNotFoundError(
-                    f"Fichier {creds_file} introuvable. "
-                    "Télécharge-le depuis Google Cloud Console."
+                    f"Fichier {creds_file} introuvable."
                 )
             flow = InstalledAppFlow.from_client_secrets_file(
                 str(creds_file), SCOPES
             )
-            creds = flow.run_local_server(port=8080)
-            logger.info("Nouveau token Gmail obtenu")
+            creds = flow.run_local_server(port=0)
 
-        # Sauvegarde le token pour les prochaines fois
         with open(token_file, "w") as f:
             f.write(creds.to_json())
-        logger.info("Token Gmail sauvegardé", file=str(token_file))
 
     return build("gmail", "v1", credentials=creds)
 

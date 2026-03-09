@@ -6,3 +6,4 @@ __pycache__/
 
 backend/gmail_credentials.json
 .envbackend/gmail_credentials.json
+backend/gmail_token.json
