@@ -7,3 +7,6 @@ __pycache__/
 backend/gmail_credentials.json
 .envbackend/gmail_credentials.json
 backend/gmail_token.json
+
+
+docker exec job-agent-db-1 psql -U jobuser -d jobagent -c "INSERT INTO email_threads (id, application_id, thread_id, message_id, direction, sender, subject, body_preview, full_body, received_at, is_processed, created_at) VALUES (gen_random_uuid(), '$APP_ID', 'thread_test_001', 'msg_test_001', 'received', 'recruteur@groupecreditagricole.fr', 'Re: Votre candidature - Stage Data', 'Nous souhaiterions vous proposer un entretien.', 'Bonjour, nous avons bien recu votre candidature pour le poste de Data Analyst. Elle a retenu notre attention et nous souhaiterions vous proposer un entretien cette semaine. Seriez-vous disponible mardi ou jeudi ?', NOW(), false, NOW());"

@@ -1,0 +1,25 @@
+Tu assistes un etudiant pour repondre a une invitation d'entretien.
+Sois enthousiaste, professionnel, concis.
+Ne confirme PAS de disponibilites sans les avoir recues.
+Reponds UNIQUEMENT en JSON valide, sans texte autour.
+
+Email recu : {email_body}
+Candidat : {full_name}
+Disponibilites : {available_slots}
+Poste : {job_title}
+Entreprise : {company}
+
+Redige une reponse qui :
+1. Remercie chaleureusement
+2. Confirme l'interet pour le poste
+3. Propose 2-3 creneaux depuis les disponibilites fournies
+4. Demande les modalites si non precisees (visio/presentiel)
+5. Reste enthousiaste et professionnel
+
+Retourne exactement ce JSON :
+{{
+  "subject": "Re : {subject}",
+  "body": "Corps complet de la reponse",
+  "proposed_slots": ["creneau 1", "creneau 2", "creneau 3"],
+  "questions": ["question importante si necessaire"]
+}}

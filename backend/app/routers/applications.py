@@ -8,6 +8,9 @@ from app.models.application import Application
 from app.services.generator import generate_application
 from app.services.job_service import create_application_draft
 from app.services.email_service import send_email, create_draft
+from app.services.classifier import classify_email, generate_interview_response, generate_info_response
+from app.services.email_service import get_email_body, create_draft
+from app.models.email_thread import EmailThread
 import uuid
 
 router = APIRouter()
@@ -179,6 +182,133 @@ async def get_application(
         "created_at": str(app.created_at),
     }
 
+@router.post("/classify-responses")
+async def classify_all_responses(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Lit les emails non traités et les classifie.
+    Génère des brouillons de réponse pour les cas positifs.
+    """
+    from datetime import datetime
+
+    result = await db.execute(
+        select(EmailThread)
+        .options(
+            selectinload(EmailThread.application)
+            .selectinload(Application.job_offer)
+            .selectinload(JobOffer.company)
+        )
+        .where(EmailThread.is_processed == False)
+        .where(EmailThread.direction == "received")
+    )
+    threads = result.scalars().all()
+
+    if not threads:
+        return {"message": "Aucun email non traité", "classified": 0}
+
+    classified = []
+
+    for thread in threads:
+        app = thread.application
+        if not app or not app.job_offer:
+            continue
+
+        offer = app.job_offer
+        company = offer.company.name if offer.company else "Inconnue"
+
+        # Récupère le corps complet depuis Gmail
+        full_body = thread.full_body or thread.body_preview or ""
+        if not full_body and thread.message_id:
+            full_body = get_email_body(thread.message_id)
+
+        # Classifie avec GPT
+        classification = await classify_email(
+            email_body=full_body,
+            email_subject=thread.subject or "",
+            sender=thread.sender or "",
+            job_title=offer.title,
+            company=company,
+            sent_date=str(app.sent_at.date()) if app.sent_at else "inconnue",
+        )
+
+        # Met à jour le thread
+        thread.classification = classification.get("classification")
+        thread.classification_confidence = classification.get("confidence")
+        thread.is_processed = True
+
+        # Met à jour le statut de la candidature
+        cls = classification.get("classification")
+
+        if cls == "refusal":
+            app.status = "refused"
+            classified.append({
+                "company": company,
+                "classification": "refusal",
+                "action": "Archivé automatiquement",
+            })
+
+        elif cls == "interview_request":
+            app.status = "interview_proposed"
+            # Génère un brouillon de réponse
+            response = await generate_interview_response(
+                email_body=full_body,
+                email_subject=thread.subject or "",
+                job_title=offer.title,
+                company=company,
+            )
+            draft = create_draft(
+                to=thread.sender or "",
+                subject=response.get("subject", ""),
+                body=response.get("body", ""),
+            )
+            classified.append({
+                "company": company,
+                "classification": "interview_request",
+                "action": "Brouillon de réponse créé",
+                "draft_id": draft.get("draft_id"),
+                "proposed_slots": response.get("proposed_slots", []),
+            })
+
+        elif cls == "info_request":
+            app.status = "response_received"
+            response = await generate_info_response(
+                email_body=full_body,
+                email_subject=thread.subject or "",
+                job_title=offer.title,
+                company=company,
+            )
+            draft = create_draft(
+                to=thread.sender or "",
+                subject=response.get("subject", ""),
+                body=response.get("body", ""),
+            )
+            classified.append({
+                "company": company,
+                "classification": "info_request",
+                "action": "Brouillon de réponse créé",
+                "draft_id": draft.get("draft_id"),
+            })
+
+        elif cls in ["positive_interest", "start_date_discussion"]:
+            app.status = "response_received"
+            classified.append({
+                "company": company,
+                "classification": cls,
+                "action": "Validation humaine requise",
+                "urgency": classification.get("urgency"),
+                "key_elements": classification.get("key_elements", []),
+            })
+
+        else:
+            classified.append({
+                "company": company,
+                "classification": "unclassified",
+                "action": "Vérification manuelle recommandée",
+            })
+
+    await db.commit()
+    return {"classified": len(classified), "results": classified}
 
 @router.post("/{application_id}/send")
 async def send_application(

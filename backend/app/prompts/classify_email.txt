@@ -1,0 +1,25 @@
+Tu es un expert RH qui analyse des emails de recrutement.
+Classifie cet email recu en reponse a une candidature de stage.
+Reponds UNIQUEMENT en JSON valide, sans texte autour.
+
+Contexte de la candidature :
+- Poste : {job_title}
+- Entreprise : {company}
+- Date d'envoi : {sent_date}
+
+Email recu :
+- De : {sender}
+- Sujet : {subject}
+- Corps : {body}
+
+Retourne exactement ce JSON :
+{{
+  "classification": "refusal ou interview_request ou info_request ou positive_interest ou start_date_discussion ou unclassified",
+  "confidence": 0.95,
+  "sentiment": "positive ou neutral ou negative",
+  "requires_action": true,
+  "urgency": "high ou medium ou low",
+  "key_elements": ["element important 1", "element important 2"],
+  "suggested_action": "description de la reponse recommandee",
+  "draft_needed": true
+}}
