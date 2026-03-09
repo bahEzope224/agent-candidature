@@ -2,7 +2,6 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 from pathlib import Path
 
-# Cherche le .env dans le dossier courant OU dans le dossier parent
 ENV_FILE = Path(".env") if Path(".env").exists() else Path("../.env")
 
 class Settings(BaseSettings):
@@ -16,6 +15,11 @@ class Settings(BaseSettings):
     AUTO_SEND_THRESHOLD: int = 85
     MIN_RELEVANCE_SCORE: int = 60
     FOLLOWUP_DAYS: int = 7
+
+    # Gmail
+    GMAIL_CREDENTIALS_FILE: str = "gmail_credentials.json"
+    GMAIL_TOKEN_FILE: str = "gmail_token.json"
+    GMAIL_SENDER_EMAIL: str = ""
 
     class Config:
         env_file = str(ENV_FILE)

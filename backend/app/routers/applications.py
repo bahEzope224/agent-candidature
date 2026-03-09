@@ -9,8 +9,74 @@ from app.services.generator import generate_application
 from app.services.job_service import create_application_draft
 from app.services.scorer import get_action
 import uuid
+from app.services.email_service import send_email, create_draft
 
 router = APIRouter()
+ 
+@router.post("/{application_id}/send")
+async def send_application(
+    application_id: uuid.UUID,
+    mode: str = "draft",  # "draft" ou "send"
+    recipient_email: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Envoie ou met en brouillon une candidature.
+    mode='draft' : crée un brouillon Gmail (recommandé pour commencer)
+    mode='send'  : envoie directement
+    """
+    result = await db.execute(
+        select(Application)
+        .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
+        .where(Application.id == application_id)
+    )
+    app = result.scalar_one_or_none()
+
+    if not app:
+        raise HTTPException(status_code=404, detail="Candidature non trouvée")
+
+    if app.status not in ["ready_to_send", "pending_review"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Statut actuel '{app.status}' — ne peut pas être envoyé"
+        )
+
+    # Email destinataire (à récupérer depuis l'offre ou en paramètre)
+    to_email = recipient_email or "recruteur@entreprise.com"
+
+    if mode == "send":
+        email_result = send_email(
+            to=to_email,
+            subject=app.email_subject,
+            body=app.email_body,
+        )
+        if email_result["success"]:
+            from datetime import datetime
+            app.status = "sent"
+            app.sent_at = datetime.utcnow()
+            app.gmail_thread_id = email_result.get("thread_id")
+            app.gmail_message_id = email_result.get("message_id")
+            await db.commit()
+            return {"status": "sent", "message_id": email_result.get("message_id")}
+        else:
+            raise HTTPException(status_code=500, detail=email_result.get("error"))
+    else:
+        # Mode brouillon par défaut
+        draft_result = create_draft(
+            to=to_email,
+            subject=app.email_subject,
+            body=app.email_body,
+        )
+        if draft_result["success"]:
+            app.status = "pending_review"
+            await db.commit()
+            return {
+                "status": "draft_created",
+                "draft_id": draft_result.get("draft_id"),
+                "message": "Brouillon créé dans Gmail — vérifie avant d'envoyer",
+            }
+        else:
+            raise HTTPException(status_code=500, detail=draft_result.get("error"))
 
 
 @router.post("/generate/{offer_id}")

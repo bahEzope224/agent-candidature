@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import create_tables
-from app.routers import jobs, applications
+from app.routers import jobs, applications, auth
 import app.models
 
 @asynccontextmanager
@@ -12,6 +12,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Job Agent API", version="1.0.0", lifespan=lifespan)
 
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(applications.router, prefix="/api/applications", tags=["applications"])
 
