@@ -1,0 +1,20 @@
+Tu es un expert RH specialise en data et technologie.
+Analyse cette offre d'emploi et extrais les informations cles.
+Reponds UNIQUEMENT en JSON valide, sans texte autour.
+
+Offre a analyser :
+{description}
+
+Titre : {title}
+Entreprise : {company}
+
+Retourne exactement ce JSON :
+{{
+  "required_skills": ["liste des competences indispensables"],
+  "nice_to_have_skills": ["competences appreciees"],
+  "experience_level": "junior ou intermediaire ou senior",
+  "contract_type": "stage ou alternance ou cdi",
+  "key_missions": ["3 a 5 missions principales"],
+  "sector": "secteur metier",
+  "red_flags": ["elements problematiques eventuels"]
+}}

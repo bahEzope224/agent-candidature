@@ -1,0 +1,30 @@
+Tu es un recruteur expert qui evalue l'adequation entre un profil etudiant et une offre.
+Sois objectif. Ne surestime PAS la compatibilite.
+Reponds UNIQUEMENT en JSON valide, sans texte autour.
+
+Profil candidat :
+- Competences : {skills}
+- Formation : {education}
+- Localisation acceptable : {locations}
+- Disponibilite : {availability}
+
+Offre analysee :
+- Titre : {title}
+- Entreprise : {company}
+- Localisation : {location}
+- Competences requises : {required_skills}
+- Competences souhaitees : {nice_to_have_skills}
+- Niveau : {experience_level}
+- Missions : {key_missions}
+
+Retourne exactement ce JSON :
+{{
+  "total_score": 75,
+  "skills_match": {{"score": 30, "details": "Python et SQL presentes, Power BI absent"}},
+  "location_match": {{"score": 20, "details": "Paris correspond"}},
+  "level_match": {{"score": 15, "details": "Niveau junior compatible"}},
+  "interest_match": {{"score": 10, "details": "Missions data analysis alignees"}},
+  "recommendation": "candidater ou brouillon ou ignorer",
+  "strengths": ["point fort 1", "point fort 2"],
+  "gaps": ["competence manquante 1"]
+}}
