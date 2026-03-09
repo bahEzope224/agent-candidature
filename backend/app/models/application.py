@@ -52,7 +52,7 @@ class Application(Base):
     )
 
     # Relations
-    user: Mapped["User"] = relationship(back_populates="applications")
-    job_offer: Mapped["JobOffer"] = relationship(back_populates="applications")
-    email_threads: Mapped[list["EmailThread"]] = relationship(back_populates="application")
-    followups: Mapped[list["Followup"]] = relationship(back_populates="application")
+    user = relationship("User", backref="applications")
+    job_offer = relationship("JobOffer", back_populates="applications")
+    email_threads = relationship("EmailThread", back_populates="application")
+    followups = relationship("Followup", back_populates="application")
