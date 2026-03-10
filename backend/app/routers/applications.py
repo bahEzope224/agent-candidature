@@ -12,6 +12,8 @@ from app.services.classifier import classify_email, generate_interview_response,
 from app.services.email_service import get_email_body, create_draft
 from app.models.email_thread import EmailThread
 import uuid
+from app.dependencies import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -24,6 +26,8 @@ router = APIRouter()
 async def list_applications(
     status: str = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+
 ):
     query = (
         select(Application)
@@ -80,6 +84,7 @@ async def pending_followups(db: AsyncSession = Depends(get_db)):
 async def generate_batch(
     limit: int = 5,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(JobOffer)
