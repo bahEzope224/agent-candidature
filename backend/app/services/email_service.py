@@ -24,7 +24,6 @@ SCOPES = [
 
 def get_gmail_service():
     """Retourne un service Gmail — depuis env var (prod) ou fichier (local)"""
-    import os
 
     token_json = os.getenv("GMAIL_TOKEN_JSON")
 
@@ -62,6 +61,49 @@ def get_gmail_service():
                 f.write(creds.to_json())
 
         return build("gmail", "v1", credentials=creds)
+
+
+def build_email(to: str, subject: str, body: str, sender: str = None) -> dict:
+    """Construit un email au format Gmail API"""
+    if sender is None:
+        sender = settings.GMAIL_SENDER_EMAIL
+
+    message = MIMEMultipart("alternative")
+    message["To"] = to
+    message["From"] = sender
+    message["Subject"] = subject
+
+    part = MIMEText(body, "plain", "utf-8")
+    message.attach(part)
+
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    return {"raw": raw}
+
+
+def send_email(to: str, subject: str, body: str) -> dict:
+    """Envoie un email via Gmail API"""
+    try:
+        service = get_gmail_service()
+        message = build_email(to, subject, body)
+        sent = service.users().messages().send(userId="me", body=message).execute()
+        logger.info("Email envoyé", to=to, subject=subject, message_id=sent.get("id"))
+        return {"success": True, "message_id": sent.get("id"), "thread_id": sent.get("threadId")}
+    except HttpError as e:
+        logger.error("Erreur envoi Gmail", error=str(e), to=to)
+        return {"success": False, "error": str(e)}
+
+
+def create_draft(to: str, subject: str, body: str) -> dict:
+    """Crée un brouillon dans Gmail (sans envoyer)"""
+    try:
+        service = get_gmail_service()
+        message = build_email(to, subject, body)
+        draft = service.users().drafts().create(userId="me", body={"message": message}).execute()
+        logger.info("Brouillon créé", to=to, subject=subject, draft_id=draft.get("id"))
+        return {"success": True, "draft_id": draft.get("id"), "message_id": draft.get("message", {}).get("id")}
+    except HttpError as e:
+        logger.error("Erreur création brouillon", error=str(e))
+        return {"success": False, "error": str(e)}
 
 
 def get_recent_emails(max_results: int = 50) -> list[dict]:
@@ -102,7 +144,9 @@ def get_email_body(message_id: str) -> str:
     """Récupère le corps complet d'un email"""
     try:
         service = get_gmail_service()
-        message = service.users().messages().get(userId="me", id=message_id, format="full").execute()
+        message = service.users().messages().get(
+            userId="me", id=message_id, format="full"
+        ).execute()
         payload = message.get("payload", {})
 
         if payload.get("body", {}).get("data"):
