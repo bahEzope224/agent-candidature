@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from app.database import Base
@@ -41,6 +41,7 @@ class JobOffer(Base):
     hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=True)
     posted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    source = Column(String(50), default="wttj")
 
     # Scoring
     relevance_score: Mapped[int] = mapped_column(Integer, nullable=True)

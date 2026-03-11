@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr, field_validator
+import structlog
+
 from app.database import get_db
 from app.models.user import User
 from app.models.profile import Profile
@@ -12,7 +14,6 @@ from app.services.auth_service import (
 )
 from app.dependencies import get_current_user
 from app.services.email_service import get_gmail_service
-import structlog
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -79,9 +80,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         is_active=True,
     )
     db.add(user)
-    await db.flush()  # obtient l'ID sans commit
+    await db.flush()
 
-    # Crée un profil vide associé
     profile = Profile(
         user_id=user.id,
         first_name=body.full_name.split()[0] if body.full_name else "",
@@ -97,14 +97,11 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     db.add(profile)
     await db.commit()
 
-    access_token = create_access_token(str(user.id), user.email)
-    refresh_token = create_refresh_token(str(user.id))
-
     logger.info("Nouvel utilisateur", email=user.email)
 
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "access_token": create_access_token(str(user.id), user.email),
+        "refresh_token": create_refresh_token(str(user.id)),
         "token_type": "bearer",
         "user": {"id": str(user.id), "email": user.email, "full_name": user.full_name},
     }
@@ -117,12 +114,9 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail=error)
 
-    access_token = create_access_token(str(user.id), user.email)
-    refresh_token = create_refresh_token(str(user.id))
-
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "access_token": create_access_token(str(user.id), user.email),
+        "refresh_token": create_refresh_token(str(user.id)),
         "token_type": "bearer",
         "user": {"id": str(user.id), "email": user.email, "full_name": user.full_name},
     }
@@ -163,7 +157,7 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.services.auth_service import verify_password, hash_password
+    from app.services.auth_service import verify_password
     if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
     current_user.hashed_password = hash_password(body.new_password)
@@ -173,7 +167,7 @@ async def change_password(
 
 @router.get("/gmail/status")
 async def gmail_status(current_user: User = Depends(get_current_user)):
-    """Statut de la connexion Gmail — route protégée"""
+    """Statut de la connexion Gmail"""
     try:
         service = get_gmail_service()
         profile = service.users().getProfile(userId="me").execute()
@@ -184,8 +178,3 @@ async def gmail_status(current_user: User = Depends(get_current_user)):
         }
     except Exception:
         return {"connected": False}
-
-
-@router.get("/gmail/connect")
-async def gmail_connect(current_user: User = Depends(get_current_user)):
-    return {"message": "Lance python3 scripts/auth_gmail.py dans le terminal"}
