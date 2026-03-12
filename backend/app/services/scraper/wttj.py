@@ -1,33 +1,18 @@
 """
-Scraper WTTJ sans Playwright — utilise l'API publique Welcome to the Jungle.
-Fonctionne sur Render free tier (pas de Chromium nécessaire).
+Scraper principal — utilise jobspy pour Indeed + LinkedIn.
+Pas de Playwright, pas de Chromium, fonctionne sur Render free tier.
 """
 import asyncio
 import hashlib
-import logging
 from typing import Optional
-import httpx
 import structlog
 
 logger = structlog.get_logger()
 
-WTTJ_API = "https://api.welcometothejungle.com/api/v1"
-HEADERS = {
-    "Accept": "application/json",
-    "Accept-Language": "fr-FR,fr;q=0.9",
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Referer": "https://www.welcometothejungle.com/",
-    "Origin": "https://www.welcometothejungle.com",
-}
-
 QUERIES = [
     "Data Analyst",
     "Data Scientist",
-    "Business Intelligence",
+    "Business Intelligence Analyst",
     "Analyste données",
 ]
 
@@ -36,139 +21,62 @@ def _make_hash(title: str, company: str, url: str) -> str:
     return hashlib.md5(f"{title}{company}{url}".encode()).hexdigest()
 
 
-async def scrape_wttj(
-    query: str,
-    location: str = "Paris",
-    max_pages: int = 2,
-) -> list[dict]:
-    """Scrape WTTJ via son API publique pour une requête donnée."""
-    offers = []
-    params_base = {
-        "query": query,
-        "page": 1,
-        "per_page": 30,
-        "contract_type[]": ["internship", "apprenticeship", "full_time"],
-    }
-
-    # Ajout localisation si précisée
-    if location and location.lower() not in ("france", "remote", ""):
-        params_base["location_geopoint"] = location
-        params_base["aroundRadius"] = 50
-
-    async with httpx.AsyncClient(headers=HEADERS, timeout=30, follow_redirects=True) as client:
-        for page in range(1, max_pages + 1):
-            params = {**params_base, "page": page}
-            try:
-                logger.info("WTTJ API request", query=query, location=location, page=page)
-                r = await client.get(f"{WTTJ_API}/jobs", params=params)
-
-                if r.status_code == 200:
-                    data = r.json()
-                    jobs = data.get("jobs", [])
-                    if not jobs:
-                        break
-
-                    for job in jobs:
-                        try:
-                            org = job.get("organization", {}) or {}
-                            contract = job.get("contract_type", "") or ""
-                            slug = job.get("slug", "") or job.get("reference", "")
-                            org_slug = org.get("slug", "") or ""
-                            url = (
-                                f"https://www.welcometothejungle.com/fr/companies/"
-                                f"{org_slug}/jobs/{slug}"
-                                if org_slug and slug
-                                else "https://www.welcometothejungle.com"
-                            )
-
-                            title = job.get("name", "") or ""
-                            company = org.get("name", "") or ""
-                            description = job.get("description", "") or ""
-                            location_data = job.get("office", {}) or {}
-                            city = location_data.get("city", location) or location
-
-                            offers.append({
-                                "title": title,
-                                "company": company,
-                                "location": city,
-                                "contract_type": contract,
-                                "description": description[:2000],
-                                "url": url,
-                                "source": "wttj",
-                                "hash": _make_hash(title, company, url),
-                            })
-                        except Exception as e:
-                            logger.warning("Erreur parsing job", error=str(e))
-                            continue
-
-                    logger.info("WTTJ page scrapée", query=query, page=page, count=len(jobs))
-
-                    # Pagination
-                    total_pages = data.get("meta", {}).get("total_pages", 1)
-                    if page >= total_pages:
-                        break
-
-                elif r.status_code == 429:
-                    logger.warning("WTTJ rate limit", page=page)
-                    await asyncio.sleep(5)
-                    break
-                else:
-                    logger.warning("WTTJ erreur HTTP", status=r.status_code, page=page)
-                    # Fallback : essaie l'API de recherche alternative
-                    offers_alt = await _scrape_wttj_search(client, query, location, page)
-                    offers.extend(offers_alt)
-                    break
-
-            except httpx.TimeoutException:
-                logger.warning("WTTJ timeout", query=query, page=page)
-                break
-            except Exception as e:
-                logger.error("WTTJ erreur", query=query, error=str(e))
-                break
-
-            await asyncio.sleep(1)  # politesse
-
-    return offers
-
-
-async def _scrape_wttj_search(
-    client: httpx.AsyncClient,
-    query: str,
-    location: str,
-    page: int = 1,
-) -> list[dict]:
-    """Fallback : API de recherche WTTJ alternative."""
-    offers = []
+def _scrape_jobspy_sync(query: str, location: str, results_wanted: int = 20) -> list[dict]:
+    """Scraping synchrone via jobspy (Indeed + LinkedIn)."""
     try:
-        params = {
-            "query": query,
-            "page": page,
-            "per_page": 20,
-        }
-        r = await client.get(
-            "https://api.welcometothejungle.com/api/v1/jobs/search",
-            params=params,
+        from jobspy import scrape_jobs
+
+        df = scrape_jobs(
+            site_name=["indeed", "linkedin"],
+            search_term=query,
+            location=location,
+            results_wanted=results_wanted,
+            hours_old=72 * 7,
+            country_indeed="France",
+            linkedin_fetch_description=False,
         )
-        if r.status_code == 200:
-            data = r.json()
-            for job in data.get("jobs", []):
-                org = job.get("organization", {}) or {}
-                title = job.get("name", "")
-                company = org.get("name", "")
-                url = f"https://www.welcometothejungle.com/fr/jobs/{job.get('slug','')}"
+
+        if df is None or df.empty:
+            logger.warning("Jobspy aucun résultat", query=query, location=location)
+            return []
+
+        offers = []
+        for _, row in df.iterrows():
+            try:
+                title = str(row.get("title") or "")
+                company = str(row.get("company") or "")
+                url = str(row.get("job_url") or "")
+                description = str(row.get("description") or "")[:2000]
+                job_location = str(row.get("location") or location)
+                contract = str(row.get("job_type") or "")
+                source = str(row.get("site") or "indeed")
+
+                if not title or not company:
+                    continue
+
                 offers.append({
                     "title": title,
                     "company": company,
-                    "location": location,
-                    "contract_type": job.get("contract_type", ""),
-                    "description": (job.get("description", "") or "")[:2000],
+                    "location": job_location,
+                    "contract_type": contract,
+                    "description": description,
                     "url": url,
-                    "source": "wttj",
+                    "source": source,
                     "hash": _make_hash(title, company, url),
                 })
+            except Exception as e:
+                logger.warning("Erreur parsing row", error=str(e))
+                continue
+
+        logger.info("Jobspy résultats", query=query, location=location, count=len(offers))
+        return offers
+
+    except ImportError:
+        logger.error("jobspy non installé — ajoute python-jobspy dans requirements.txt")
+        return []
     except Exception as e:
-        logger.warning("WTTJ fallback erreur", error=str(e))
-    return offers
+        logger.error("Erreur jobspy", query=query, error=str(e))
+        return []
 
 
 async def scrape_all_queries(
@@ -177,23 +85,42 @@ async def scrape_all_queries(
 ) -> list[dict]:
     """Lance le scraping pour toutes les requêtes et localisations."""
     if locations is None:
-        locations = ["Paris"]
+        locations = ["Paris, France"]
+
+    normalized = [
+        f"{loc}, France" if "france" not in loc.lower() else loc
+        for loc in locations
+    ]
 
     all_offers = []
     seen_hashes = set()
+    results_per_query = max(10, max_pages * 10)
 
     for query in QUERIES:
-        for location in locations:
+        for location in normalized:
             logger.info("Scraping requête", query=query, location=location)
             try:
-                offers = await scrape_wttj(query, location, max_pages)
+                loop = asyncio.get_event_loop()
+                offers = await loop.run_in_executor(
+                    None, _scrape_jobspy_sync, query, location, results_per_query
+                )
                 for o in offers:
                     if o["hash"] not in seen_hashes:
                         seen_hashes.add(o["hash"])
                         all_offers.append(o)
             except Exception as e:
                 logger.error("Erreur scraping", query=query, location=location, error=str(e))
-            await asyncio.sleep(2)
+
+            await asyncio.sleep(3)
 
     logger.info("Scraping terminé", total=len(all_offers))
     return all_offers
+
+
+async def scrape_wttj(query: str, location: str = "Paris", max_pages: int = 2) -> list[dict]:
+    """Alias pour compatibilité avec l'ancien code."""
+    loc = f"{location}, France" if "france" not in location.lower() else location
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, _scrape_jobspy_sync, query, loc, max(10, max_pages * 10)
+    )
