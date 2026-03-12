@@ -21,6 +21,7 @@ celery_app.config_from_object({
         "app.tasks.followups",
         "app.tasks.email_monitor",
         "app.tasks.scraping",
+        "app.tasks.email_tasks",
     ],
     "beat_schedule": {
         "check-followups": {
