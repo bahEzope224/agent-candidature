@@ -1,165 +1,199 @@
+"""
+Scraper WTTJ sans Playwright — utilise l'API publique Welcome to the Jungle.
+Fonctionne sur Render free tier (pas de Chromium nécessaire).
+"""
 import asyncio
-import random
-from datetime import datetime
+import hashlib
+import logging
 from typing import Optional
-from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
-from app.services.scraper.base import RawJobOffer
+import httpx
 import structlog
 
 logger = structlog.get_logger()
 
-WTTJ_BASE = "https://www.welcometothejungle.com/fr/jobs"
+WTTJ_API = "https://api.welcometothejungle.com/api/v1"
+HEADERS = {
+    "Accept": "application/json",
+    "Accept-Language": "fr-FR,fr;q=0.9",
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://www.welcometothejungle.com/",
+    "Origin": "https://www.welcometothejungle.com",
+}
 
-SEARCH_QUERIES = [
+QUERIES = [
     "Data Analyst",
     "Data Scientist",
-    "Business Analyst",
-    "BI Analyst",
-    "Data Engineer",
+    "Business Intelligence",
+    "Analyste données",
 ]
+
+
+def _make_hash(title: str, company: str, url: str) -> str:
+    return hashlib.md5(f"{title}{company}{url}".encode()).hexdigest()
+
 
 async def scrape_wttj(
     query: str,
     location: str = "Paris",
-    max_pages: int = 3,
-) -> list[RawJobOffer]:
-    """Scrape les offres WTTJ pour une requête donnée"""
+    max_pages: int = 2,
+) -> list[dict]:
+    """Scrape WTTJ via son API publique pour une requête donnée."""
     offers = []
+    params_base = {
+        "query": query,
+        "page": 1,
+        "per_page": 30,
+        "contract_type[]": ["internship", "apprenticeship", "full_time"],
+    }
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-dev-shm-usage"]
-        )
-        context = await browser.new_context(
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            locale="fr-FR",
-        )
-        page = await context.new_page()
+    # Ajout localisation si précisée
+    if location and location.lower() not in ("france", "remote", ""):
+        params_base["location_geopoint"] = location
+        params_base["aroundRadius"] = 50
 
-        for page_num in range(1, max_pages + 1):
-            url = (
-                f"{WTTJ_BASE}?query={query.replace(' ', '+')}"
-                f"&page={page_num}"
-                f"&aroundQuery={location}"
-                f"&contractType=internship"
-            )
-
-            logger.info("Scraping WTTJ", url=url, page=page_num)
-
+    async with httpx.AsyncClient(headers=HEADERS, timeout=30, follow_redirects=True) as client:
+        for page in range(1, max_pages + 1):
+            params = {**params_base, "page": page}
             try:
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-                await asyncio.sleep(random.uniform(2, 4))  # respecte les serveurs
+                logger.info("WTTJ API request", query=query, location=location, page=page)
+                r = await client.get(f"{WTTJ_API}/jobs", params=params)
 
-                # Attend que les cards soient chargées
-                await page.wait_for_selector(
-                    '[data-testid="search-results-list-item-wrapper"]',
-                    timeout=15000
-                )
+                if r.status_code == 200:
+                    data = r.json()
+                    jobs = data.get("jobs", [])
+                    if not jobs:
+                        break
 
-                cards = await page.query_selector_all('[data-testid="search-results-list-item-wrapper"]')
+                    for job in jobs:
+                        try:
+                            org = job.get("organization", {}) or {}
+                            contract = job.get("contract_type", "") or ""
+                            slug = job.get("slug", "") or job.get("reference", "")
+                            org_slug = org.get("slug", "") or ""
+                            url = (
+                                f"https://www.welcometothejungle.com/fr/companies/"
+                                f"{org_slug}/jobs/{slug}"
+                                if org_slug and slug
+                                else "https://www.welcometothejungle.com"
+                            )
 
-                if not cards:
-                    logger.info("Aucune offre sur cette page", page=page_num)
+                            title = job.get("name", "") or ""
+                            company = org.get("name", "") or ""
+                            description = job.get("description", "") or ""
+                            location_data = job.get("office", {}) or {}
+                            city = location_data.get("city", location) or location
+
+                            offers.append({
+                                "title": title,
+                                "company": company,
+                                "location": city,
+                                "contract_type": contract,
+                                "description": description[:2000],
+                                "url": url,
+                                "source": "wttj",
+                                "hash": _make_hash(title, company, url),
+                            })
+                        except Exception as e:
+                            logger.warning("Erreur parsing job", error=str(e))
+                            continue
+
+                    logger.info("WTTJ page scrapée", query=query, page=page, count=len(jobs))
+
+                    # Pagination
+                    total_pages = data.get("meta", {}).get("total_pages", 1)
+                    if page >= total_pages:
+                        break
+
+                elif r.status_code == 429:
+                    logger.warning("WTTJ rate limit", page=page)
+                    await asyncio.sleep(5)
+                    break
+                else:
+                    logger.warning("WTTJ erreur HTTP", status=r.status_code, page=page)
+                    # Fallback : essaie l'API de recherche alternative
+                    offers_alt = await _scrape_wttj_search(client, query, location, page)
+                    offers.extend(offers_alt)
                     break
 
-                for card in cards:
-                    offer = await extract_card_data(card, page)
-                    if offer:
-                        offers.append(offer)
-
-                logger.info("Offres trouvées", count=len(cards), page=page_num)
-
-            except PlaywrightTimeout:
-                logger.warning("Timeout WTTJ", page=page_num, url=url)
+            except httpx.TimeoutException:
+                logger.warning("WTTJ timeout", query=query, page=page)
                 break
             except Exception as e:
-                logger.error("Erreur scraping WTTJ", error=str(e), page=page_num)
+                logger.error("WTTJ erreur", query=query, error=str(e))
                 break
 
-            # Pause entre pages (évite le ban)
-            await asyncio.sleep(random.uniform(3, 6))
-
-        await browser.close()
+            await asyncio.sleep(1)  # politesse
 
     return offers
 
 
-async def extract_card_data(card, page) -> Optional[RawJobOffer]:
-    """Extrait les données d'une card WTTJ"""
+async def _scrape_wttj_search(
+    client: httpx.AsyncClient,
+    query: str,
+    location: str,
+    page: int = 1,
+) -> list[dict]:
+    """Fallback : API de recherche WTTJ alternative."""
+    offers = []
     try:
-        # Titre — dans le h2
-        title_el = await card.query_selector('h2')
-        title = await title_el.inner_text() if title_el else None
-
-        # Entreprise — dans le alt de l'image logo
-        img_el = await card.query_selector('img[alt]')
-        company = await img_el.get_attribute('alt') if img_el else "Inconnu"
-
-        # URL — premier lien de la card
-        link_el = await card.query_selector('a[href*="/jobs/"]')
-        href = await link_el.get_attribute('href') if link_el else None
-
-        if not title or not href:
-            return None
-
-        # Localisation — extraite depuis l'URL (ex: senior-data-analyst_paris)
-        # Format WTTJ : /fr/companies/slug/jobs/job-title_ville
-        location = ""
-        if "_" in href:
-            location_slug = href.split("_")[-1]  # ex: "paris"
-            location = location_slug.replace("-", " ").title()
-
-        source_url = (
-            f"https://www.welcometothejungle.com{href}"
-            if href.startswith("/") else href
+        params = {
+            "query": query,
+            "page": page,
+            "per_page": 20,
+        }
+        r = await client.get(
+            "https://api.welcometothejungle.com/api/v1/jobs/search",
+            params=params,
         )
-
-        return RawJobOffer(
-            title=title.strip(),
-            company_name=company.strip(),
-            location=location.strip(),
-            description="",
-            source_url=source_url,
-            source_platform="wttj",
-            contract_type="stage",
-            posted_at=datetime.utcnow(),
-        )
-
+        if r.status_code == 200:
+            data = r.json()
+            for job in data.get("jobs", []):
+                org = job.get("organization", {}) or {}
+                title = job.get("name", "")
+                company = org.get("name", "")
+                url = f"https://www.welcometothejungle.com/fr/jobs/{job.get('slug','')}"
+                offers.append({
+                    "title": title,
+                    "company": company,
+                    "location": location,
+                    "contract_type": job.get("contract_type", ""),
+                    "description": (job.get("description", "") or "")[:2000],
+                    "url": url,
+                    "source": "wttj",
+                    "hash": _make_hash(title, company, url),
+                })
     except Exception as e:
-        logger.warning("Erreur extraction card WTTJ", error=str(e))
-        return None
+        logger.warning("WTTJ fallback erreur", error=str(e))
+    return offers
 
 
 async def scrape_all_queries(
-    locations: list[str] = None,
+    locations: Optional[list[str]] = None,
     max_pages: int = 2,
-) -> list[RawJobOffer]:
-    """Lance le scraping pour toutes les requêtes et localisations"""
+) -> list[dict]:
+    """Lance le scraping pour toutes les requêtes et localisations."""
     if locations is None:
         locations = ["Paris"]
 
     all_offers = []
     seen_hashes = set()
 
-    for query in SEARCH_QUERIES:
+    for query in QUERIES:
         for location in locations:
             logger.info("Scraping requête", query=query, location=location)
-            offers = await scrape_wttj(query, location, max_pages)
-
-            # Déduplication par hash
-            for offer in offers:
-                h = offer.compute_hash()
-                if h not in seen_hashes:
-                    seen_hashes.add(h)
-                    all_offers.append(offer)
-
-            # Pause entre requêtes
-            await asyncio.sleep(random.uniform(5, 10))
+            try:
+                offers = await scrape_wttj(query, location, max_pages)
+                for o in offers:
+                    if o["hash"] not in seen_hashes:
+                        seen_hashes.add(o["hash"])
+                        all_offers.append(o)
+            except Exception as e:
+                logger.error("Erreur scraping", query=query, location=location, error=str(e))
+            await asyncio.sleep(2)
 
     logger.info("Scraping terminé", total=len(all_offers))
     return all_offers
