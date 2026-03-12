@@ -156,3 +156,4 @@ WTForms==3.2.1
 xyzservices==2024.9.0
 yfinance==0.2.66
 python-jobspy
+python-jose[cryptography]==3.3.0
