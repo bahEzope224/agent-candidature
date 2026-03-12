@@ -155,3 +155,4 @@ Werkzeug==3.0.4
 WTForms==3.2.1
 xyzservices==2024.9.0
 yfinance==0.2.66
+python-jobspy==1.1.80
