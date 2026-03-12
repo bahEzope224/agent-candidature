@@ -347,7 +347,7 @@ function AuthPage({onLogin}) {
       <div className="auth-left">
         <div className="auth-brand">Job<span>Agent</span></div>
         <div>
-          <div className="auth-tagline">Ton agent IA<br/>pour décrocher<br/>ton <span>stage</span></div>
+          <div className="auth-tagline">Ton agent IA<br/>pour décrocher<br/>ton <span>job</span></div>
           <div className="auth-desc" style={{marginTop:10}}>Scraping, scoring, candidatures et relances auto.</div>
         </div>
         <div className="auth-features">
@@ -398,7 +398,10 @@ function DashboardPage({toast,user}) {
         <div className="hdr-actions">
           <button className="btn btn-sec btn-sm" disabled={busy.cls} onClick={()=>action('cls','/api/applications/classify-responses','POST','Emails classifiés')}>{busy.cls?<span className="spinner"></span>:'📬'} Classifier</button>
           <button className="btn btn-sec btn-sm" disabled={busy.score} onClick={()=>action('score','/api/jobs/score-all','POST')}>{busy.score?<span className="spinner"></span>:'⚡'} Scorer</button>
-          <button className="btn btn-mint btn-sm" disabled={busy.scrape} onClick={()=>action('scrape','/api/jobs/scrape','POST','Scraping lancé !')}>{busy.scrape?<span className="spinner"></span>:'🔍'} Scraper</button>
+          <button className="btn btn-mint btn-sm" disabled={busy.scrape} onClick={async ()=>{
+  toast.info('Connexion au serveur...');
+  await action('scrape','/api/jobs/scrape','POST','Scraping lancé !');
+}}>{busy.scrape?<span className="spinner"></span>:'🔍'} Scraper</button>
         </div>
       </div>
       <div className="stats-grid">
