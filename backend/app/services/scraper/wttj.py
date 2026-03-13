@@ -26,12 +26,25 @@ def _scrape_jobspy_sync(query: str, location: str, results_wanted: int = 20) -> 
     try:
         from jobspy import scrape_jobs
 
-        df = scrape_jobs(
-            site_name=["indeed"],
-            search_term=query,
-            location=location,
-            results_wanted=results_wanted,
-        )
+        # Essaie Indeed, fallback LinkedIn si 403
+        try:
+            df = scrape_jobs(
+                site_name=["indeed"],
+                search_term=query,
+                location=location,
+                results_wanted=results_wanted,
+            )
+        except Exception as e1:
+            if "403" in str(e1) or "bad response" in str(e1).lower():
+                logger.warning("Indeed 403, fallback LinkedIn", query=query)
+                df = scrape_jobs(
+                    site_name=["linkedin"],
+                    search_term=query,
+                    location=location,
+                    results_wanted=results_wanted,
+                )
+            else:
+                raise
 
         if df is None or df.empty:
             logger.warning("Jobspy aucun résultat", query=query, location=location)
@@ -72,7 +85,11 @@ def _scrape_jobspy_sync(query: str, location: str, results_wanted: int = 20) -> 
         logger.error("jobspy non installé — ajoute python-jobspy dans requirements.txt")
         return []
     except Exception as e:
-        logger.error("Erreur jobspy", query=query, error=str(e))
+        err = str(e)
+        if "403" in err or "bad response" in err.lower():
+            logger.warning("Jobspy 403 — Indeed bloque, skip", query=query)
+        else:
+            logger.error("Erreur jobspy", query=query, error=err)
         return []
 
 
