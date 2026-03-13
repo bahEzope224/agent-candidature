@@ -27,12 +27,10 @@ def _scrape_jobspy_sync(query: str, location: str, results_wanted: int = 20) -> 
         from jobspy import scrape_jobs
 
         df = scrape_jobs(
-            site_name=["indeed", "linkedin"],
+            site_name=["indeed"],
             search_term=query,
             location=location,
             results_wanted=results_wanted,
-            country_indeed="France",
-            linkedin_fetch_description=False,
         )
 
         if df is None or df.empty:
