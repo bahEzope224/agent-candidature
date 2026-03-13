@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from app.database import get_db
 from app.services.scraper.wttj import scrape_all_queries
+from app.services.scraper.base import RawJobOffer
 from app.services.job_service import save_many_offers
 from app.services.scorer import score_offer, get_action
 from app.services.indeed_scraper import scrape_indeed
@@ -27,7 +28,24 @@ async def trigger_scrape(
 ):
     async def run_scrape():
         logger.info("Démarrage du scraping", locations=locations)
-        raw_offers = await scrape_all_queries(locations=locations, max_pages=2)
+        raw_dicts = await scrape_all_queries(locations=locations, max_pages=2)
+
+        # Convertit les dicts en objets RawJobOffer
+        raw_offers = []
+        for o in raw_dicts:
+            try:
+                raw_offers.append(RawJobOffer(
+                    title=o.get("title", ""),
+                    company_name=o.get("company", ""),
+                    location=o.get("location", ""),
+                    contract_type=o.get("contract_type", ""),
+                    description=o.get("description", ""),
+                    source_url=o.get("url", ""),
+                    source_platform=o.get("source", "adzuna"),
+                ))
+            except Exception as e:
+                logger.warning("Offre invalide ignorée", error=str(e))
+
         stats = await save_many_offers(db, raw_offers)
         logger.info("Scraping terminé", **stats)
 
@@ -134,7 +152,7 @@ async def score_one_offer(
     }
 
 
-# ── Indeed ─────────────────────────────────────────────────
+# ── Indeed (désactivé — stub) ───────────────────────────────
 
 class IndeedScrapeRequest(BaseModel):
     search_term: str = "Data Analyst stage"
@@ -148,49 +166,4 @@ async def scrape_indeed_jobs(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Scrape Indeed et sauvegarde les offres en base"""
-    jobs = scrape_indeed(
-        search_term=body.search_term,
-        location=body.location,
-        results_wanted=body.results_wanted,
-    )
-
-    if not jobs:
-        return {"message": "Aucune offre trouvée", "count": 0}
-
-    saved = 0
-    for job in jobs:
-        # Vérifie si déjà en base par URL
-        existing = await db.execute(
-            select(JobOffer).where(JobOffer.source_url == job["url"])
-        )
-        if existing.scalar_one_or_none():
-            continue
-
-        # Crée l'offre
-        offer = JobOffer(
-            title=job["title"],
-            location=job["location"],
-            description=job["description"],
-            source_url=job["url"],
-            source_platform="indeed",
-            status="to_review",
-        )
-        db.add(offer)
-        await db.flush()
-
-        # Score GPT
-        try:
-            score_result = await score_offer(offer)
-            offer.relevance_score = score_result.get("total_score", 0)
-            offer.score_breakdown = score_result
-            offer.analysis_json = score_result.get("analysis", {})
-            offer.status = "shortlisted" if get_action(score_result) != "ignore" else "ignored"
-        except Exception as e:
-            logger.error("Erreur scoring Indeed", error=str(e))
-            offer.relevance_score = 0
-
-        saved += 1
-
-    await db.commit()
-    return {"message": f"{saved} offres Indeed sauvegardées", "count": saved}
+    return {"message": "Indeed désactivé — utilise /scrape (Adzuna)", "count": 0}
