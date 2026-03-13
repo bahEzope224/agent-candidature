@@ -7,9 +7,8 @@ from app.models.job_offer import JobOffer
 from app.models.application import Application
 from app.services.generator import generate_application
 from app.services.job_service import create_application_draft
-from app.services.email_service import send_email, create_draft
 from app.services.classifier import classify_email, generate_interview_response, generate_info_response
-from app.services.email_service import get_email_body, create_draft
+from app.services.email_service import send_email, create_draft, get_email_body
 from app.models.email_thread import EmailThread
 import uuid
 from app.dependencies import get_current_user
@@ -128,37 +127,46 @@ async def trigger_followups():
 # ROUTES DYNAMIQUES — après les routes statiques
 # ================================================================
 
-@router.post("/generate/{offer_id}")
-async def generate_for_offer(
-    offer_id: uuid.UUID,
+@router.post("/generate-batch")
+async def generate_batch(
+    limit: int = 5,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(JobOffer)
         .options(selectinload(JobOffer.company))
-        .where(JobOffer.id == offer_id)
+        .where(JobOffer.status == "shortlisted")
+        .order_by(JobOffer.relevance_score.desc())
+        .limit(limit)
     )
-    offer = result.scalar_one_or_none()
-    if not offer:
-        raise HTTPException(status_code=404, detail="Offre non trouvée")
-    if offer.relevance_score and offer.relevance_score < 60:
-        raise HTTPException(status_code=400, detail=f"Score trop bas ({offer.relevance_score}/100)")
-    generated = await generate_application(offer)
-    confidence = generated.get("confidence_score", 0)
-    mock_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-    application = await create_application_draft(db, offer, generated, mock_user_id)
+    offers = result.scalars().all()
+
+    if not offers:
+        return {"message": "Aucune offre shortlistée à traiter", "generated": 0}
+
+    results = []
+
+    for offer in offers:
+        try:
+            generated = await generate_application(offer)
+            application = await create_application_draft(db, offer, generated, current_user.id)
+
+            results.append({
+                "offer": offer.title,
+                "company": offer.company.name if offer.company else "Inconnue",
+                "score": offer.relevance_score,
+                "confidence": generated.get("confidence_score"),
+                "status": application.status,
+            })
+
+            offer.status = "to_apply"
+
+        except Exception as e:
+            results.append({"offer": offer.title, "error": str(e)})
+
     await db.commit()
-    return {
-        "application_id": str(application.id),
-        "offer": offer.title,
-        "company": offer.company.name if offer.company else "Inconnue",
-        "status": application.status,
-        "confidence": confidence,
-        "action": "auto_send" if confidence >= 0.85 else "pending_review",
-        "email_subject": generated.get("email_subject"),
-        "email_preview": generated.get("email_body", "")[:300] + "...",
-        "personalization": generated.get("personalization_highlights", []),
-    }
+    return {"generated": len(results), "results": results}
 
 
 @router.get("/{application_id}")
