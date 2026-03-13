@@ -31,7 +31,6 @@ def _scrape_jobspy_sync(query: str, location: str, results_wanted: int = 20) -> 
             search_term=query,
             location=location,
             results_wanted=results_wanted,
-            hours_old=72 * 7,
             country_indeed="France",
             linkedin_fetch_description=False,
         )
