@@ -5,7 +5,8 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.job_offer import JobOffer
 from app.models.application import Application
-from app.services.generator import generate_application
+from app.models.profile import Profile
+from app.services.generator import generate_application, profile_to_candidate
 from app.services.job_service import create_application_draft
 from app.services.classifier import classify_email, generate_interview_response, generate_info_response
 from app.services.email_service import send_email, create_draft, get_email_body
@@ -17,6 +18,15 @@ from app.models.user import User
 router = APIRouter()
 
 
+async def _load_candidate(db: AsyncSession, user_id) -> dict:
+    """Charge le profil utilisateur et le convertit en dict candidat."""
+    result = await db.execute(
+        select(Profile).where(Profile.user_id == user_id)
+    )
+    profile = result.scalar_one_or_none()
+    return profile_to_candidate(profile)
+
+
 # ================================================================
 # ROUTES STATIQUES — doivent être AVANT /{application_id}
 # ================================================================
@@ -26,7 +36,6 @@ async def list_applications(
     status: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-
 ):
     query = (
         select(Application)
@@ -54,7 +63,6 @@ async def list_applications(
 
 @router.get("/pending-followups")
 async def pending_followups(db: AsyncSession = Depends(get_db)):
-    """Liste les candidatures qui attendent une relance"""
     from datetime import datetime, timedelta
     cutoff = datetime.utcnow() - timedelta(days=7)
     result = await db.execute(
@@ -101,7 +109,10 @@ async def generate_for_offer(
             detail=f"Score trop bas ({offer.relevance_score}/100)"
         )
 
-    generated = await generate_application(offer)
+    # ✅ Charge le vrai profil utilisateur
+    candidate = await _load_candidate(db, current_user.id)
+
+    generated = await generate_application(offer, candidate=candidate)
     confidence = generated.get("confidence_score", 0)
 
     application = await create_application_draft(db, offer, generated, current_user.id)
@@ -122,7 +133,6 @@ async def generate_for_offer(
 
 @router.post("/trigger-followups")
 async def trigger_followups():
-    """Déclenche manuellement la vérification des relances"""
     from app.tasks.followups import check_and_send_followups
     task = check_and_send_followups.delay()
     return {"message": "Vérification des relances lancée", "task_id": task.id}
@@ -150,13 +160,14 @@ async def generate_batch(
     if not offers:
         return {"message": "Aucune offre shortlistée à traiter", "generated": 0}
 
-    results = []
+    # ✅ Charge le vrai profil utilisateur une seule fois
+    candidate = await _load_candidate(db, current_user.id)
 
+    results = []
     for offer in offers:
         try:
-            generated = await generate_application(offer)
+            generated = await generate_application(offer, candidate=candidate)
             application = await create_application_draft(db, offer, generated, current_user.id)
-
             results.append({
                 "offer": offer.title,
                 "company": offer.company.name if offer.company else "Inconnue",
@@ -164,9 +175,7 @@ async def generate_batch(
                 "confidence": generated.get("confidence_score"),
                 "status": application.status,
             })
-
             offer.status = "to_apply"
-
         except Exception as e:
             results.append({"offer": offer.title, "error": str(e)})
 
@@ -200,14 +209,9 @@ async def get_application(
         "created_at": str(app.created_at),
     }
 
+
 @router.post("/classify-responses")
-async def classify_all_responses(
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Lit les emails non traités et les classifie.
-    Génère des brouillons de réponse pour les cas positifs.
-    """
+async def classify_all_responses(db: AsyncSession = Depends(get_db)):
     from datetime import datetime
 
     result = await db.execute(
@@ -226,7 +230,6 @@ async def classify_all_responses(
         return {"message": "Aucun email non traité", "classified": 0}
 
     classified = []
-
     for thread in threads:
         app = thread.application
         if not app or not app.job_offer:
@@ -234,13 +237,10 @@ async def classify_all_responses(
 
         offer = app.job_offer
         company = offer.company.name if offer.company else "Inconnue"
-
-        # Récupère le corps complet depuis Gmail
         full_body = thread.full_body or thread.body_preview or ""
         if not full_body and thread.message_id:
             full_body = get_email_body(thread.message_id)
 
-        # Classifie avec GPT
         classification = await classify_email(
             email_body=full_body,
             email_subject=thread.subject or "",
@@ -250,83 +250,39 @@ async def classify_all_responses(
             sent_date=str(app.sent_at.date()) if app.sent_at else "inconnue",
         )
 
-        # Met à jour le thread
         thread.classification = classification.get("classification")
         thread.classification_confidence = classification.get("confidence")
         thread.is_processed = True
-
-        # Met à jour le statut de la candidature
         cls = classification.get("classification")
 
         if cls == "refusal":
             app.status = "refused"
-            classified.append({
-                "company": company,
-                "classification": "refusal",
-                "action": "Archivé automatiquement",
-            })
-
+            classified.append({"company": company, "classification": "refusal", "action": "Archivé"})
         elif cls == "interview_request":
             app.status = "interview_proposed"
-            # Génère un brouillon de réponse
             response = await generate_interview_response(
-                email_body=full_body,
-                email_subject=thread.subject or "",
-                job_title=offer.title,
-                company=company,
+                email_body=full_body, email_subject=thread.subject or "",
+                job_title=offer.title, company=company,
             )
-            draft = create_draft(
-                to=thread.sender or "",
-                subject=response.get("subject", ""),
-                body=response.get("body", ""),
-            )
-            classified.append({
-                "company": company,
-                "classification": "interview_request",
-                "action": "Brouillon de réponse créé",
-                "draft_id": draft.get("draft_id"),
-                "proposed_slots": response.get("proposed_slots", []),
-            })
-
+            draft = create_draft(to=thread.sender or "", subject=response.get("subject", ""), body=response.get("body", ""))
+            classified.append({"company": company, "classification": "interview_request", "action": "Brouillon créé", "draft_id": draft.get("draft_id")})
         elif cls == "info_request":
             app.status = "response_received"
             response = await generate_info_response(
-                email_body=full_body,
-                email_subject=thread.subject or "",
-                job_title=offer.title,
-                company=company,
+                email_body=full_body, email_subject=thread.subject or "",
+                job_title=offer.title, company=company,
             )
-            draft = create_draft(
-                to=thread.sender or "",
-                subject=response.get("subject", ""),
-                body=response.get("body", ""),
-            )
-            classified.append({
-                "company": company,
-                "classification": "info_request",
-                "action": "Brouillon de réponse créé",
-                "draft_id": draft.get("draft_id"),
-            })
-
+            draft = create_draft(to=thread.sender or "", subject=response.get("subject", ""), body=response.get("body", ""))
+            classified.append({"company": company, "classification": "info_request", "action": "Brouillon créé"})
         elif cls in ["positive_interest", "start_date_discussion"]:
             app.status = "response_received"
-            classified.append({
-                "company": company,
-                "classification": cls,
-                "action": "Validation humaine requise",
-                "urgency": classification.get("urgency"),
-                "key_elements": classification.get("key_elements", []),
-            })
-
+            classified.append({"company": company, "classification": cls, "action": "Validation humaine requise"})
         else:
-            classified.append({
-                "company": company,
-                "classification": "unclassified",
-                "action": "Vérification manuelle recommandée",
-            })
+            classified.append({"company": company, "classification": "unclassified", "action": "Vérification manuelle"})
 
     await db.commit()
     return {"classified": len(classified), "results": classified}
+
 
 @router.post("/{application_id}/send")
 async def send_application(
@@ -345,6 +301,7 @@ async def send_application(
         raise HTTPException(status_code=404, detail="Candidature non trouvée")
     if app.status not in ["ready_to_send", "pending_review"]:
         raise HTTPException(status_code=400, detail=f"Statut '{app.status}' — ne peut pas être envoyé")
+
     to_email = recipient_email or "recruteur@entreprise.com"
     if mode == "send":
         email_result = send_email(to=to_email, subject=app.email_subject, body=app.email_body)
@@ -362,9 +319,5 @@ async def send_application(
         if draft_result["success"]:
             app.status = "pending_review"
             await db.commit()
-            return {
-                "status": "draft_created",
-                "draft_id": draft_result.get("draft_id"),
-                "message": "Brouillon créé dans Gmail — vérifie avant d'envoyer",
-            }
+            return {"status": "draft_created", "draft_id": draft_result.get("draft_id")}
         raise HTTPException(status_code=500, detail=draft_result.get("error"))
