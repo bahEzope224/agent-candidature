@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     REDIS_URL: str
     OPENAI_API_KEY: str
     SECRET_KEY: str
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = "production"
     LOG_LEVEL: str = "INFO"
     MAX_APPLICATIONS_PER_DAY: int = 5
     AUTO_SEND_THRESHOLD: int = 85
