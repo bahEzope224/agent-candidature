@@ -547,7 +547,7 @@ function ProfilePage({toast,user}) {
   const initials=((form.first_name||'')[0]||'')+((form.last_name||'')[0]||'');
   const TABS=[{k:'info',ico:'👤',l:'Infos'},{k:'skills',ico:'⚡',l:'Skills'},{k:'search',ico:'🎯',l:'Recherche'},{k:'text',ico:'✍️',l:'Textes'},{k:'security',ico:'🔒',l:'Sécurité'}];
 
-  const ProfileContent = () => (
+</*REMOVED_PROFILECONTENT_DEF*/
     <div>
       {tab==='info'&&<div>
         <div className="fsec"><div className="fsec-ttl">👤 Identité</div>
@@ -615,7 +615,7 @@ function ProfilePage({toast,user}) {
           <div className="p-stats"><div><div className="p-stat-v">{form.skills_technical?.length||0}</div><div className="p-stat-l">Skills</div></div><div><div className="p-stat-v">{form.target_roles?.length||0}</div><div className="p-stat-l">Postes</div></div><div><div className="p-stat-v">{form.languages?.length||0}</div><div className="p-stat-l">Langues</div></div></div>
         </div>
         <div className="p-tabs">{TABS.map(t=><button key={t.k} className={`p-tab ${tab===t.k?'on':''}`} onClick={()=>setTab(t.k)}>{t.ico} {t.l}</button>)}</div>
-        <div className="card" style={{padding:'14px'}}><ProfileContent/></div>
+        <div className="card" style={{padding:'14px'}}>{profileContent}</div>
       </div>
       {/* Desktop */}
       <div id="profile-desktop" style={{display:'none'}}>
@@ -629,7 +629,7 @@ function ProfilePage({toast,user}) {
             </div>
             <div className="p-nav-desktop">{TABS.map(t=><div key={t.k} className={`p-nav-item ${tab===t.k?'on':''}`} onClick={()=>setTab(t.k)}><span>{t.ico}</span>{t.l}</div>)}</div>
           </div>
-          <div className="card" style={{height:'fit-content'}}><div style={{padding:'18px'}}><ProfileContent/></div></div>
+          <div className="card" style={{height:'fit-content'}}><div style={{padding:'18px'}}>{profileContent}</div></div>
         </div>
       </div>
     </div>
