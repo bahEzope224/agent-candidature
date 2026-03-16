@@ -25,3 +25,4 @@ class User(Base):
     # Relations
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False)
     applications: Mapped[list["Application"]] = relationship(back_populates="user")
+    job_offers: Mapped[list["JobOffer"]] = relationship(back_populates="user")

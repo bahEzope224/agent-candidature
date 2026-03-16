@@ -30,6 +30,9 @@ class JobOffer(Base):
     company_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True
     )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+    UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
 
     # Infos de l'offre
     title: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -59,3 +62,4 @@ class JobOffer(Base):
     # Relations
     company: Mapped["Company"] = relationship(back_populates="job_offers")
     applications: Mapped[list["Application"]] = relationship(back_populates="job_offer")
+    user: Mapped["User"] = relationship(back_populates="job_offers")
