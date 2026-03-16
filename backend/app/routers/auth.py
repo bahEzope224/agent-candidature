@@ -6,12 +6,13 @@ POST /api/auth/login     → obtenir un token JWT
 GET  /api/auth/me        → profil de l'utilisateur connecté
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 import structlog
+
 
 from app.database import get_db
 from app.models.user import User
@@ -44,6 +45,9 @@ class TokenResponse(BaseModel):
     email: str
     full_name: str | None
 
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 # ================================================================
 # ROUTES
@@ -89,14 +93,31 @@ async def register(
 
 @router.post("/login")
 async def login(
-    form: OAuth2PasswordRequestForm = Depends(),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Connexion email + mot de passe → token JWT (7 jours).
-    Compatible OAuth2PasswordBearer FastAPI.
+    Accepte JSON {"email": "...", "password": "..."}
+    OU form-data (OAuth2 compatible)
     """
-    result = await db.execute(select(User).where(User.email == form.username))
+    content_type = request.headers.get("content-type", "")
+
+    if "application/json" in content_type:
+        body = await request.json()
+        email = body.get("email")
+        password = body.get("password")
+    else:
+        form = await request.form()
+        email = form.get("username") or form.get("email")
+        password = form.get("password")
+
+    if not email or not password:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Email et mot de passe requis",
+        )
+
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
     if not user or not user.hashed_password:
@@ -105,7 +126,7 @@ async def login(
             detail="Email ou mot de passe incorrect",
         )
 
-    if not verify_password(form.password, user.hashed_password):
+    if not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou mot de passe incorrect",
