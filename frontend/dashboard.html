@@ -531,7 +531,6 @@ function OffersPage({toast}) {
   );
 }
 
-// ── PROFILE ──
 function ProfilePage({toast,user}) {
   const [form,setForm]=useState(null);
   const [saving,setSaving]=useState(false);
@@ -547,7 +546,7 @@ function ProfilePage({toast,user}) {
   const initials=((form.first_name||'')[0]||'')+((form.last_name||'')[0]||'');
   const TABS=[{k:'info',ico:'👤',l:'Infos'},{k:'skills',ico:'⚡',l:'Skills'},{k:'search',ico:'🎯',l:'Recherche'},{k:'text',ico:'✍️',l:'Textes'},{k:'security',ico:'🔒',l:'Sécurité'}];
 
-</*REMOVED_PROFILECONTENT_DEF*/
+  const profileContent = (
     <div>
       {tab==='info'&&<div>
         <div className="fsec"><div className="fsec-ttl">👤 Identité</div>
@@ -606,7 +605,6 @@ function ProfilePage({toast,user}) {
         <div><div className="page-title">Mon Profil</div><div className="page-sub">Personnalise tes candidatures</div></div>
         {tab!=='security'&&<button className="btn btn-mint" onClick={save} disabled={saving}>{saving?<span className="spinner"></span>:'💾'} Sauvegarder</button>}
       </div>
-      {/* Mobile */}
       <div id="profile-mobile">
         <div className="card" style={{padding:'18px 14px',textAlign:'center',marginBottom:12}}>
           <div className="p-avatar">{initials.toUpperCase()||'?'}</div>
@@ -617,7 +615,6 @@ function ProfilePage({toast,user}) {
         <div className="p-tabs">{TABS.map(t=><button key={t.k} className={`p-tab ${tab===t.k?'on':''}`} onClick={()=>setTab(t.k)}>{t.ico} {t.l}</button>)}</div>
         <div className="card" style={{padding:'14px'}}>{profileContent}</div>
       </div>
-      {/* Desktop */}
       <div id="profile-desktop" style={{display:'none'}}>
         <div className="p-profile-desktop">
           <div>
