@@ -43,7 +43,6 @@ oauthlib==3.3.1
 openai==1.30.0
 orjson==3.11.7
 packaging==26.0
-playwright==1.44.0
 prompt_toolkit==3.0.52
 proto-plus==1.27.1
 protobuf==6.33.5
