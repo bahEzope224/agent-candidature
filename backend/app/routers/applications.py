@@ -1,16 +1,29 @@
+"""
+Router Applications — MODE MANUEL
+----------------------------------
+L'envoi automatique de mails et la candidature automatique sont
+temporairement désactivés. L'utilisateur candidate et relance manuellement.
+
+Flux :
+  to_apply → [utilisateur confirme] → sent
+  sent + J+7 → follow_up_needed (+ mail de relance généré)
+  follow_up_needed → [utilisateur confirme] → follow_up_sent
+  follow_up_sent + J+7 → no_response
+  sent / follow_up_sent → interview | refused  (mise à jour manuelle)
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.job_offer import JobOffer
 from app.models.application import Application
+from app.models.user import User
 from app.services.generator import generate_application
 from app.services.job_service import create_application_draft
-from app.services.email_service import send_email, create_draft
-from app.services.classifier import classify_email, generate_interview_response, generate_info_response
-from app.services.email_service import get_email_body, create_draft
-from app.models.email_thread import EmailThread
+from app.services.auth_service import get_current_user
 import uuid
 
 router = APIRouter()
@@ -24,43 +37,58 @@ router = APIRouter()
 async def list_applications(
     status: str = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    """
+    Retourne le dashboard de l'utilisateur connecté uniquement.
+    Inclut le lien de l'offre et le mail généré pour candidature manuelle.
+    """
     query = (
         select(Application)
         .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
+        .where(Application.user_id == current_user.id)
         .order_by(Application.created_at.desc())
     )
     if status:
         query = query.where(Application.status == status)
     result = await db.execute(query)
     apps = result.scalars().all()
+    now = datetime.utcnow()
     return [
         {
             "id": str(a.id),
             "offer": a.job_offer.title if a.job_offer else "N/A",
             "company": a.job_offer.company.name if a.job_offer and a.job_offer.company else "N/A",
+            "score": a.job_offer.relevance_score if a.job_offer else None,
+            # Lien direct vers l'offre pour candidater manuellement
+            "offer_url": a.job_offer.source_url if a.job_offer else None,
             "status": a.status,
             "confidence": a.llm_confidence_score,
-            "requires_validation": a.requires_human_validation,
-            "created_at": str(a.created_at),
             "email_subject": a.email_subject,
+            # Indique depuis combien de jours la candidature est dans ce statut
+            "days_in_status": (now - a.sent_at).days if a.sent_at else None,
+            "sent_at": str(a.sent_at) if a.sent_at else None,
+            "followup_sent_at": str(a.followup_sent_at) if a.followup_sent_at else None,
+            "created_at": str(a.created_at),
         }
         for a in apps
     ]
 
 
 @router.get("/pending-followups")
-async def pending_followups(db: AsyncSession = Depends(get_db)):
-    """Liste les candidatures qui attendent une relance"""
-    from datetime import datetime, timedelta
-    cutoff = datetime.utcnow() - timedelta(days=7)
+async def pending_followups(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Liste les candidatures de l'utilisateur connecté dont le statut est 'follow_up_needed'.
+    """
     result = await db.execute(
         select(Application)
         .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
         .where(
-            Application.status == "sent",
-            Application.sent_at <= cutoff,
-            Application.followup_sent_at.is_(None),
+            Application.status == "follow_up_needed",
+            Application.user_id == current_user.id,
         )
     )
     apps = result.scalars().all()
@@ -69,8 +97,12 @@ async def pending_followups(db: AsyncSession = Depends(get_db)):
             "id": str(a.id),
             "offer": a.job_offer.title if a.job_offer else "N/A",
             "company": a.job_offer.company.name if a.job_offer and a.job_offer.company else "N/A",
+            "offer_url": a.job_offer.source_url if a.job_offer else None,
             "sent_at": str(a.sent_at),
             "days_since_sent": (datetime.utcnow() - a.sent_at).days if a.sent_at else 0,
+            # Mail de relance prêt à copier-coller
+            "followup_email_body": a.followup_email_body,
+            "followup_email_subject": f"Re : {a.email_subject}" if a.email_subject else "Relance candidature",
         }
         for a in apps
     ]
@@ -80,7 +112,12 @@ async def pending_followups(db: AsyncSession = Depends(get_db)):
 async def generate_batch(
     limit: int = 5,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    """
+    Génère des lettres de motivation pour les offres shortlistées.
+    Les candidatures sont liées à l'utilisateur connecté.
+    """
     result = await db.execute(
         select(JobOffer)
         .options(selectinload(JobOffer.company))
@@ -91,43 +128,122 @@ async def generate_batch(
     offers = result.scalars().all()
     if not offers:
         return {"message": "Aucune offre shortlistée à traiter", "generated": 0}
+
     results = []
-    mock_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     for offer in offers:
         try:
             generated = await generate_application(offer)
-            application = await create_application_draft(db, offer, generated, mock_user_id)
+            application = await create_application_draft(db, offer, generated, current_user.id)
+            application.status = "to_apply"
             results.append({
+                "application_id": str(application.id),
                 "offer": offer.title,
                 "company": offer.company.name if offer.company else "Inconnue",
                 "score": offer.relevance_score,
+                "offer_url": offer.source_url,
+                "email_subject": generated.get("email_subject"),
+                "email_body": generated.get("email_body"),
+                "cover_letter": generated.get("cover_letter"),
                 "confidence": generated.get("confidence_score"),
-                "status": application.status,
+                "status": "to_apply",
+                "action_required": "Candidatez manuellement via le lien, puis confirmez avec PATCH /{id}/confirm-sent",
             })
-            offer.status = "to_apply"
         except Exception as e:
             results.append({"offer": offer.title, "error": str(e)})
     await db.commit()
     return {"generated": len(results), "results": results}
 
 
-@router.post("/trigger-followups")
-async def trigger_followups():
-    """Déclenche manuellement la vérification des relances"""
-    from app.tasks.followups import check_and_send_followups
-    task = check_and_send_followups.delay()
-    return {"message": "Vérification des relances lancée", "task_id": task.id}
+@router.post("/check-followup-deadlines")
+async def check_followup_deadlines(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Vérifie les délais pour l'utilisateur connecté uniquement et met à jour les statuts :
+    - sent + J+7 → follow_up_needed (+ génère mail de relance)
+    - follow_up_sent + J+7 → no_response
+    """
+    cutoff_7j = datetime.utcnow() - timedelta(days=7)
+    updated = []
 
+    # sent → follow_up_needed
+    result = await db.execute(
+        select(Application)
+        .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
+        .where(
+            Application.status == "sent",
+            Application.sent_at <= cutoff_7j,
+            Application.user_id == current_user.id,
+        )
+    )
+    apps_to_followup = result.scalars().all()
 
-# ================================================================
-# ROUTES DYNAMIQUES — après les routes statiques
-# ================================================================
+    for app in apps_to_followup:
+        offer = app.job_offer
+        company_name = offer.company.name if offer and offer.company else "l'entreprise"
+        try:
+            followup_content = await _generate_followup_email(
+                job_title=offer.title if offer else "le poste",
+                company=company_name,
+                sent_date=app.sent_at.strftime("%d/%m/%Y") if app.sent_at else "récemment",
+                original_email_preview=(app.email_body or "")[:300],
+            )
+            app.followup_email_body = followup_content.get("body", "")
+        except Exception:
+            app.followup_email_body = _default_followup_body(
+                offer.title if offer else "le poste", company_name
+            )
+        app.status = "follow_up_needed"
+        app.followup_generated_at = datetime.utcnow()
+        updated.append({
+            "id": str(app.id),
+            "offer": offer.title if offer else "N/A",
+            "company": company_name,
+            "new_status": "follow_up_needed",
+            "action_required": "Envoyez le mail de relance manuellement, puis confirmez avec PATCH /{id}/confirm-followup-sent",
+        })
+
+    # follow_up_sent → no_response
+    result2 = await db.execute(
+        select(Application)
+        .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
+        .where(
+            Application.status == "follow_up_sent",
+            Application.followup_sent_at <= cutoff_7j,
+            Application.user_id == current_user.id,
+        )
+    )
+    apps_no_response = result2.scalars().all()
+
+    for app in apps_no_response:
+        app.status = "no_response"
+        offer = app.job_offer
+        updated.append({
+            "id": str(app.id),
+            "offer": offer.title if offer else "N/A",
+            "company": offer.company.name if offer and offer.company else "N/A",
+            "new_status": "no_response",
+        })
+
+    await db.commit()
+    return {
+        "updated": len(updated),
+        "results": updated,
+        "message": f"{len(apps_to_followup)} relances à envoyer, {len(apps_no_response)} sans réponse.",
+    }
+
 
 @router.post("/generate/{offer_id}")
 async def generate_for_offer(
     offer_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    """
+    Génère lettre de motivation + mail pour une offre spécifique.
+    La candidature est liée à l'utilisateur connecté.
+    """
     result = await db.execute(
         select(JobOffer)
         .options(selectinload(JobOffer.company))
@@ -138,21 +254,24 @@ async def generate_for_offer(
         raise HTTPException(status_code=404, detail="Offre non trouvée")
     if offer.relevance_score and offer.relevance_score < 60:
         raise HTTPException(status_code=400, detail=f"Score trop bas ({offer.relevance_score}/100)")
+
     generated = await generate_application(offer)
-    confidence = generated.get("confidence_score", 0)
-    mock_user_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
-    application = await create_application_draft(db, offer, generated, mock_user_id)
+    application = await create_application_draft(db, offer, generated, current_user.id)
+    application.status = "to_apply"
     await db.commit()
+
     return {
         "application_id": str(application.id),
         "offer": offer.title,
         "company": offer.company.name if offer.company else "Inconnue",
-        "status": application.status,
-        "confidence": confidence,
-        "action": "auto_send" if confidence >= 0.85 else "pending_review",
+        "offer_url": offer.source_url,
+        "status": "to_apply",
+        "confidence": generated.get("confidence_score"),
         "email_subject": generated.get("email_subject"),
-        "email_preview": generated.get("email_body", "")[:300] + "...",
+        "email_body": generated.get("email_body"),
+        "cover_letter": generated.get("cover_letter"),
         "personalization": generated.get("personalization_highlights", []),
+        "next_action": "Candidatez via le lien, puis PATCH /{application_id}/confirm-sent",
     }
 
 
@@ -160,11 +279,15 @@ async def generate_for_offer(
 async def get_application(
     application_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(Application)
         .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
-        .where(Application.id == application_id)
+        .where(
+            Application.id == application_id,
+            Application.user_id == current_user.id,
+        )
     )
     app = result.scalar_one_or_none()
     if not app:
@@ -173,180 +296,143 @@ async def get_application(
         "id": str(app.id),
         "offer": app.job_offer.title if app.job_offer else "N/A",
         "company": app.job_offer.company.name if app.job_offer and app.job_offer.company else "N/A",
+        "offer_url": app.job_offer.source_url if app.job_offer else None,
         "status": app.status,
         "confidence": app.llm_confidence_score,
-        "requires_validation": app.requires_human_validation,
         "email_subject": app.email_subject,
         "email_body": app.email_body,
         "cover_letter": app.cover_letter_text,
+        "followup_email_body": app.followup_email_body,
+        "sent_at": str(app.sent_at) if app.sent_at else None,
+        "followup_sent_at": str(app.followup_sent_at) if app.followup_sent_at else None,
         "created_at": str(app.created_at),
     }
 
-@router.post("/classify-responses")
-async def classify_all_responses(
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Lit les emails non traités et les classifie.
-    Génère des brouillons de réponse pour les cas positifs.
-    """
-    from datetime import datetime
 
-    result = await db.execute(
-        select(EmailThread)
-        .options(
-            selectinload(EmailThread.application)
-            .selectinload(Application.job_offer)
-            .selectinload(JobOffer.company)
-        )
-        .where(EmailThread.is_processed == False)
-        .where(EmailThread.direction == "received")
-    )
-    threads = result.scalars().all()
+# ================================================================
+# ROUTES DE CONFIRMATION MANUELLE
+# ================================================================
 
-    if not threads:
-        return {"message": "Aucun email non traité", "classified": 0}
-
-    classified = []
-
-    for thread in threads:
-        app = thread.application
-        if not app or not app.job_offer:
-            continue
-
-        offer = app.job_offer
-        company = offer.company.name if offer.company else "Inconnue"
-
-        # Récupère le corps complet depuis Gmail
-        full_body = thread.full_body or thread.body_preview or ""
-        if not full_body and thread.message_id:
-            full_body = get_email_body(thread.message_id)
-
-        # Classifie avec GPT
-        classification = await classify_email(
-            email_body=full_body,
-            email_subject=thread.subject or "",
-            sender=thread.sender or "",
-            job_title=offer.title,
-            company=company,
-            sent_date=str(app.sent_at.date()) if app.sent_at else "inconnue",
-        )
-
-        # Met à jour le thread
-        thread.classification = classification.get("classification")
-        thread.classification_confidence = classification.get("confidence")
-        thread.is_processed = True
-
-        # Met à jour le statut de la candidature
-        cls = classification.get("classification")
-
-        if cls == "refusal":
-            app.status = "refused"
-            classified.append({
-                "company": company,
-                "classification": "refusal",
-                "action": "Archivé automatiquement",
-            })
-
-        elif cls == "interview_request":
-            app.status = "interview_proposed"
-            # Génère un brouillon de réponse
-            response = await generate_interview_response(
-                email_body=full_body,
-                email_subject=thread.subject or "",
-                job_title=offer.title,
-                company=company,
-            )
-            draft = create_draft(
-                to=thread.sender or "",
-                subject=response.get("subject", ""),
-                body=response.get("body", ""),
-            )
-            classified.append({
-                "company": company,
-                "classification": "interview_request",
-                "action": "Brouillon de réponse créé",
-                "draft_id": draft.get("draft_id"),
-                "proposed_slots": response.get("proposed_slots", []),
-            })
-
-        elif cls == "info_request":
-            app.status = "response_received"
-            response = await generate_info_response(
-                email_body=full_body,
-                email_subject=thread.subject or "",
-                job_title=offer.title,
-                company=company,
-            )
-            draft = create_draft(
-                to=thread.sender or "",
-                subject=response.get("subject", ""),
-                body=response.get("body", ""),
-            )
-            classified.append({
-                "company": company,
-                "classification": "info_request",
-                "action": "Brouillon de réponse créé",
-                "draft_id": draft.get("draft_id"),
-            })
-
-        elif cls in ["positive_interest", "start_date_discussion"]:
-            app.status = "response_received"
-            classified.append({
-                "company": company,
-                "classification": cls,
-                "action": "Validation humaine requise",
-                "urgency": classification.get("urgency"),
-                "key_elements": classification.get("key_elements", []),
-            })
-
-        else:
-            classified.append({
-                "company": company,
-                "classification": "unclassified",
-                "action": "Vérification manuelle recommandée",
-            })
-
-    await db.commit()
-    return {"classified": len(classified), "results": classified}
-
-@router.post("/{application_id}/send")
-async def send_application(
+@router.patch("/{application_id}/confirm-sent")
+async def confirm_sent(
     application_id: uuid.UUID,
-    mode: str = "draft",
-    recipient_email: str = "",
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    """L'utilisateur confirme qu'il a candidaté manuellement → statut 'sent'"""
+    app = await _get_app(application_id, current_user.id, db)
+    if app.status != "to_apply":
+        raise HTTPException(status_code=400, detail=f"Statut actuel '{app.status}' — attendu 'to_apply'")
+    app.status = "sent"
+    app.sent_at = datetime.utcnow()
+    await db.commit()
+    return {"id": str(app.id), "status": "sent", "sent_at": str(app.sent_at)}
+
+
+@router.patch("/{application_id}/confirm-followup-sent")
+async def confirm_followup_sent(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """L'utilisateur confirme qu'il a envoyé la relance → statut 'follow_up_sent'"""
+    app = await _get_app(application_id, current_user.id, db)
+    if app.status != "follow_up_needed":
+        raise HTTPException(status_code=400, detail=f"Statut actuel '{app.status}' — attendu 'follow_up_needed'")
+    app.status = "follow_up_sent"
+    app.followup_sent_at = datetime.utcnow()
+    await db.commit()
+    return {"id": str(app.id), "status": "follow_up_sent", "followup_sent_at": str(app.followup_sent_at)}
+
+
+@router.patch("/{application_id}/confirm-interview")
+async def confirm_interview(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """L'utilisateur confirme un entretien obtenu → statut 'interview'"""
+    app = await _get_app(application_id, current_user.id, db)
+    app.status = "interview"
+    await db.commit()
+    return {"id": str(app.id), "status": "interview"}
+
+
+@router.patch("/{application_id}/confirm-refused")
+async def confirm_refused(
+    application_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """L'utilisateur marque la candidature comme refusée → statut 'refused'"""
+    app = await _get_app(application_id, current_user.id, db)
+    app.status = "refused"
+    await db.commit()
+    return {"id": str(app.id), "status": "refused"}
+
+
+# ================================================================
+# HELPERS INTERNES
+# ================================================================
+
+async def _get_app(application_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSession) -> Application:
+    """Récupère une candidature en vérifiant qu'elle appartient à l'utilisateur connecté"""
     result = await db.execute(
-        select(Application)
-        .options(selectinload(Application.job_offer).selectinload(JobOffer.company))
-        .where(Application.id == application_id)
+        select(Application).where(
+            Application.id == application_id,
+            Application.user_id == user_id,
+        )
     )
     app = result.scalar_one_or_none()
     if not app:
         raise HTTPException(status_code=404, detail="Candidature non trouvée")
-    if app.status not in ["ready_to_send", "pending_review"]:
-        raise HTTPException(status_code=400, detail=f"Statut '{app.status}' — ne peut pas être envoyé")
-    to_email = recipient_email or "recruteur@entreprise.com"
-    if mode == "send":
-        email_result = send_email(to=to_email, subject=app.email_subject, body=app.email_body)
-        if email_result["success"]:
-            from datetime import datetime
-            app.status = "sent"
-            app.sent_at = datetime.utcnow()
-            app.gmail_thread_id = email_result.get("thread_id")
-            app.gmail_message_id = email_result.get("message_id")
-            await db.commit()
-            return {"status": "sent", "message_id": email_result.get("message_id")}
-        raise HTTPException(status_code=500, detail=email_result.get("error"))
-    else:
-        draft_result = create_draft(to=to_email, subject=app.email_subject, body=app.email_body)
-        if draft_result["success"]:
-            app.status = "pending_review"
-            await db.commit()
-            return {
-                "status": "draft_created",
-                "draft_id": draft_result.get("draft_id"),
-                "message": "Brouillon créé dans Gmail — vérifie avant d'envoyer",
-            }
-        raise HTTPException(status_code=500, detail=draft_result.get("error"))
+    return app
+
+
+async def _generate_followup_email(
+    job_title: str,
+    company: str,
+    sent_date: str,
+    original_email_preview: str,
+) -> dict:
+    """Génère le texte de relance via LLM (stocké en base, pas envoyé)"""
+    import json
+    from pathlib import Path
+    from openai import AsyncOpenAI
+    from app.config import settings
+
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    prompt_path = Path(__file__).parent.parent / "prompts" / "write_followup.txt"
+    prompt = prompt_path.read_text(encoding="utf-8")
+    filled = prompt.format(
+        job_title=job_title,
+        company=company,
+        sent_date=sent_date,
+        original_email_preview=original_email_preview,
+        full_name="Prénom Nom",
+    )
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": filled}],
+        temperature=0.3,
+        max_tokens=500,
+    )
+    raw = response.choices[0].message.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return json.loads(raw)
+
+
+def _default_followup_body(job_title: str, company: str) -> str:
+    return (
+        f"Madame, Monsieur,\n\n"
+        f"Je me permets de revenir vers vous concernant ma candidature au poste de {job_title}, "
+        f"que je vous ai adressée il y a une semaine.\n\n"
+        f"Toujours très intéressé(e) par cette opportunité et par les projets de {company}, "
+        f"je reste disponible pour tout complément d'information ou pour un entretien "
+        f"selon votre convenance.\n\n"
+        f"Dans l'attente de votre retour, je vous adresse mes cordiales salutations.\n\n"
+        f"Prénom Nom"
+    )
