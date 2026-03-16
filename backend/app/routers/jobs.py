@@ -7,6 +7,8 @@ from app.services.scraper.wttj import scrape_all_queries
 from app.services.job_service import save_many_offers
 from app.services.scorer import score_offer, get_action
 from app.models.job_offer import JobOffer
+from app.models.user import User
+from app.services.auth_service import get_current_user
 import structlog
 import uuid
 
