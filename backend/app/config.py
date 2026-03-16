@@ -9,12 +9,16 @@ class Settings(BaseSettings):
     REDIS_URL: str
     OPENAI_API_KEY: str
     SECRET_KEY: str
-    ENVIRONMENT: str = "production"
+    ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
     MAX_APPLICATIONS_PER_DAY: int = 5
     AUTO_SEND_THRESHOLD: int = 85
     MIN_RELEVANCE_SCORE: int = 60
     FOLLOWUP_DAYS: int = 7
+
+    # Adzuna API (gratuit sur developer.adzuna.com)
+    ADZUNA_APP_ID: str = ""
+    ADZUNA_APP_KEY: str = ""
 
     # Gmail
     GMAIL_CREDENTIALS_FILE: str = "gmail_credentials.json"
