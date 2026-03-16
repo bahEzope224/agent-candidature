@@ -21,16 +21,22 @@ logger = structlog.get_logger()
 async def trigger_scrape(
     background_tasks: BackgroundTasks,
     locations: list[str] = ["Paris"],
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
+    user_id = current_user.id  # capture l'id avant fermeture session
+
     async def run_scrape():
-        logger.info("Démarrage du scraping", locations=locations)
-        raw_offers = await scrape_all_queries(locations=locations, max_pages=2)
-        stats = await save_many_offers(db, raw_offers, current_user.id)
-        logger.info("Scraping terminé", **stats)
-        background_tasks.add_task(run_scrape)
-        return {"message": "Scraping démarré en arrière-plan"}
+        # Ouvre une NOUVELLE session indépendante
+        from app.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as new_db:
+            logger.info("Démarrage du scraping", locations=locations)
+            raw_offers = await scrape_all_queries(locations=locations, max_pages=2)
+            stats = await save_many_offers(new_db, raw_offers, user_id)
+            logger.info("Scraping terminé", **stats)
+
+    background_tasks.add_task(run_scrape)
+    return {"message": "Scraping démarré en arrière-plan"}
 
 
 @router.get("/")
