@@ -21,7 +21,8 @@ from app.database import get_db
 from app.models.job_offer import JobOffer
 from app.models.application import Application
 from app.models.user import User
-from app.services.generator import generate_application
+from app.services.generator import generate_application, profile_to_candidate
+from app.models.profile import Profile
 from app.services.job_service import create_application_draft
 from app.services.auth_service import get_current_user
 import uuid
@@ -132,7 +133,12 @@ async def generate_batch(
     results = []
     for offer in offers:
         try:
-            generated = await generate_application(offer)
+            # Récupère le profil
+            profile_res = await db.execute(select(Profile).where(Profile.user_id == current_user.id))
+            profile = profile_res.scalar_one_or_none()
+            candidate = profile_to_candidate(profile) if profile else None
+
+            generated = await generate_application(offer, candidate)
             application = await create_application_draft(db, offer, generated, current_user.id)
             application.status = "to_apply"
             results.append({
@@ -255,7 +261,12 @@ async def generate_for_offer(
     if offer.relevance_score and offer.relevance_score < 60:
         raise HTTPException(status_code=400, detail=f"Score trop bas ({offer.relevance_score}/100)")
 
-    generated = await generate_application(offer)
+    # Récupère le profil pour personnaliser
+    profile_result = await db.execute(select(Profile).where(Profile.user_id == current_user.id))
+    profile = profile_result.scalar_one_or_none()
+    candidate = profile_to_candidate(profile) if profile else None
+
+    generated = await generate_application(offer, candidate)
     application = await create_application_draft(db, offer, generated, current_user.id)
     application.status = "to_apply"
     await db.commit()
