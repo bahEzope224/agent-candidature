@@ -29,7 +29,7 @@ async def save_job_offer(
     Le hash est maintenant user_id + url pour permettre
     à plusieurs users de scrapper la même offre.
     """
-    offer_hash = f"{str(user_id)}:{raw.compute_hash()}"
+    offer_hash = f"{str(user_id)[:8]}:{raw.compute_hash()}"
 
     result = await db.execute(
         select(JobOffer).where(JobOffer.hash == offer_hash)
