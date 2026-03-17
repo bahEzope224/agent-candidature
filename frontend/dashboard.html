@@ -1,1423 +1,889 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Job Agent — Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #f4ede0;
-    --surface: #fdf8ee;
-    --surface2: #e6dccf;
-    --border: #c9bfad30;
-    --border-bright: #a89c8850;
-    --accent: #3ec99a;
-    --accent2: #25a87e;
-    --accent3: #e08a4a;
-    --danger: #d05a4a;
-    --success: #3aaa7a;
-    --text: #26211a;
-    --text-muted: #5c5044;
-    --text-dim: #a09888;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* GRID BACKGROUND */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(62,201,154,0.07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(62,201,154,0.07) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  #root { position: relative; z-index: 1; }
-
-  /* LAYOUT */
-  .layout { display: flex; min-height: 100vh; }
-
-  /* SIDEBAR */
-  .sidebar {
-    width: 220px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    height: 100vh;
-    top: 0; left: 0;
-    padding: 24px 0;
-    z-index: 100;
-  }
-
-  .sidebar-logo {
-    padding: 0 20px 28px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sidebar-logo .brand {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 18px;
-    color: var(--text);
-    letter-spacing: -0.5px;
-  }
-
-  .sidebar-logo .brand span { color: var(--accent); }
-
-  .sidebar-logo .status-dot {
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--success);
-    margin-left: 6px;
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
-
-  .sidebar-nav { padding: 16px 12px; flex: 1; }
-
-  .nav-section-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    padding: 0 8px;
-    margin: 16px 0 8px;
-  }
-
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13.5px;
-    font-weight: 400;
-    color: var(--text-muted);
-    transition: all 0.15s;
-    margin-bottom: 2px;
-    border: 1px solid transparent;
-  }
-
-  .nav-item:hover { background: var(--surface2); color: var(--text); }
-
-  .nav-item.active {
-    background: rgba(45,184,138,0.12);
-    color: var(--accent);
-    border-color: rgba(45,184,138,0.25);
-    font-weight: 500;
-  }
-
-  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
-
-  .nav-badge {
-    margin-left: auto;
-    background: var(--accent);
-    color: white;
-    font-size: 10px;
-    font-family: 'DM Mono', monospace;
-    padding: 1px 6px;
-    border-radius: 10px;
-    font-weight: 500;
-  }
-
-  /* MAIN */
-  .main { margin-left: 220px; flex: 1; padding: 28px 32px; }
-
-  /* PAGE HEADER */
-  .page-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 28px;
-  }
-
-  .page-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.5px;
-  }
-
-  .page-subtitle {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-top: 4px;
-    font-weight: 300;
-  }
-
-  /* BUTTONS */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 9px 18px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-    font-family: 'DM Sans', sans-serif;
-  }
-
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-  }
-  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
-
-  .btn-secondary {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border-bright);
-  }
-  .btn-secondary:hover { background: #ddd8ce; }
-
-  .btn-danger {
-    background: rgba(208,90,74,0.1);
-    color: var(--danger);
-    border: 1px solid rgba(208,90,74,0.2);
-  }
-
-  .btn-success {
-    background: rgba(58,170,122,0.12);
-    color: var(--success);
-    border: 1px solid rgba(58,170,122,0.2);
-  }
-
-  .btn-sm { padding: 5px 12px; font-size: 12px; }
-
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-
-  /* STAT CARDS */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border-bright);
-    border-radius: 12px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-
-  .stat-card:hover { box-shadow: 0 4px 20px rgba(76,186,144,0.1); }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-  }
-
-  .stat-card.purple::before { background: linear-gradient(90deg, var(--accent), transparent); }
-  .stat-card.teal::before { background: linear-gradient(90deg, var(--accent2), transparent); }
-  .stat-card.orange::before { background: linear-gradient(90deg, var(--accent3), transparent); }
-  .stat-card.green::before { background: linear-gradient(90deg, var(--success), transparent); }
-
-  .stat-label {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text-dim);
-    margin-bottom: 10px;
-  }
-
-  .stat-value {
-    font-family: 'Syne', sans-serif;
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-    margin-bottom: 6px;
-  }
-
-  .stat-sub {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  .stat-icon {
-    position: absolute;
-    top: 18px; right: 18px;
-    font-size: 22px;
-    opacity: 0.15;
-  }
-
-  /* CARDS */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 20px;
-  }
-
-  .card-header {
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .card-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .card-body { padding: 0; }
-
-  /* TABLE */
-  .table { width: 100%; border-collapse: collapse; }
-
-  .table th {
-    padding: 11px 16px;
-    text-align: left;
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border-bright);
-    background: rgba(0,0,0,0.02);
-  }
-
-  .table td {
-    padding: 13px 16px;
-    font-size: 13px;
-    border-bottom: 1px solid var(--border-bright);
-    color: var(--text-muted);
-    vertical-align: middle;
-  }
-
-  .table tr:last-child td { border-bottom: none; }
-  .table tr:hover td { background: rgba(76,186,144,0.04); }
-
-  .table .title-cell {
-    color: var(--text);
-    font-weight: 500;
-    font-size: 13.5px;
-  }
-
-  /* BADGES */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-    font-family: 'DM Mono', monospace;
-    white-space: nowrap;
-  }
-
-  .badge-dot { width: 5px; height: 5px; border-radius: 50%; }
-
-  .badge-sent { background: rgba(62,201,154,0.15); color: var(--accent2); }
-  .badge-sent .badge-dot { background: var(--accent2); }
-  .badge-draft { background: rgba(224,138,74,0.13); color: var(--accent3); }
-  .badge-draft .badge-dot { background: var(--accent3); }
-  .badge-interview { background: rgba(58,170,122,0.15); color: #1f7a55; }
-  .badge-interview .badge-dot { background: #1f7a55; }
-  .badge-refused { background: rgba(208,90,74,0.1); color: var(--danger); }
-  .badge-refused .badge-dot { background: var(--danger); }
-  .badge-followup { background: rgba(26,158,116,0.1); color: var(--accent2); }
-  .badge-followup .badge-dot { background: var(--accent2); }
-  .badge-review { background: rgba(0,0,0,0.05); color: var(--text-muted); }
-  .badge-review .badge-dot { background: var(--text-dim); }
-
-  /* SCORE BAR */
-  .score-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .score-track {
-    flex: 1;
-    height: 4px;
-    background: var(--surface2);
-    border-radius: 2px;
-    overflow: hidden;
-    max-width: 80px;
-  }
-
-  .score-fill {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.3s;
-  }
-
-  .score-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--text-muted);
-    min-width: 28px;
-  }
-
-  /* ACTIONS ROW */
-  .actions-row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  /* GRID 2 COLS */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-
-  /* ACTIVITY FEED */
-  .activity-item {
-    display: flex;
-    gap: 12px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-  }
-
-  .activity-item:last-child { border-bottom: none; }
-
-  .activity-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    margin-top: 5px;
-    flex-shrink: 0;
-  }
-
-  .activity-content { flex: 1; }
-
-  .activity-title {
-    font-size: 13px;
-    color: var(--text);
-    font-weight: 500;
-    margin-bottom: 2px;
-  }
-
-  .activity-meta {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-family: 'DM Mono', monospace;
-  }
-
-  /* LOADING */
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    color: var(--text-dim);
-    font-size: 13px;
-    gap: 10px;
-  }
-
-  .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid var(--border-bright);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* EMPTY STATE */
-  .empty {
-    text-align: center;
-    padding: 48px 20px;
-    color: var(--text-dim);
-  }
-
-  .empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
-  .empty-text { font-size: 13px; }
-
-  /* TOAST */
-  .toast-container {
-    position: fixed;
-    bottom: 24px; right: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    z-index: 1000;
-  }
-
-  .toast {
-    background: var(--surface);
-    border: 1px solid var(--border-bright);
-    border-radius: 10px;
-    padding: 12px 16px;
-    font-size: 13px;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 280px;
-    animation: slide-in 0.2s ease;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-  }
-
-  .toast.success { border-left: 3px solid var(--success); }
-  .toast.error { border-left: 3px solid var(--danger); }
-  .toast.info { border-left: 3px solid var(--accent); }
-
-  @keyframes slide-in {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-
-  /* MODAL */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-    backdrop-filter: blur(4px);
-  }
-
-  .modal {
-    background: var(--surface);
-    border: 1px solid var(--border-bright);
-    border-radius: 16px;
-    padding: 28px;
-    width: 600px;
-    max-width: 90vw;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-
-  .modal-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 20px;
-  }
-
-  .email-preview {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--text-muted);
-    white-space: pre-wrap;
-    font-family: 'DM Mono', monospace;
-    max-height: 300px;
-    overflow-y: auto;
-    margin: 12px 0;
-  }
-
-  .modal-footer {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-
-  /* FILTER BAR */
-  .filter-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 4px;
-    flex-wrap: wrap;
-  }
-
-  .filter-btn {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 12px;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-muted);
-    font-family: 'DM Sans', sans-serif;
-    transition: all 0.15s;
-  }
-
-  .filter-btn:hover { border-color: var(--border-bright); color: var(--text); }
-
-  .filter-btn.active {
-    background: rgba(45,184,138,0.12);
-    border-color: rgba(45,184,138,0.3);
-    color: var(--accent2);
-  }
-
-  /* HEADER ACTIONS */
-  .header-actions { display: flex; gap: 10px; align-items: center; }
-
-  /* PROGRESS RING */
-  .progress-ring { display: inline-block; }
-
-  /* OFFER CARD */
-  .offer-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px;
-    margin-bottom: 10px;
-    transition: border-color 0.15s;
-  }
-
-  .offer-card:hover { border-color: var(--border-bright); }
-
-  .offer-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
-  }
-
-  .offer-title {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    margin-bottom: 3px;
-  }
-
-  .offer-company {
-    font-size: 12px;
-    color: var(--text-muted);
-  }
-
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
-
-  /* TABS */
-  .tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 20px;
-  }
-
-  .tab {
-    padding: 10px 20px;
-    font-size: 13px;
-    cursor: pointer;
-    color: var(--text-muted);
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-    margin-bottom: -1px;
-  }
-
-  .tab:hover { color: var(--text); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* API URL CHIP */
-  .api-chip {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 4px 10px;
-    border-radius: 6px;
-    color: var(--text-dim);
-  }
-</style>
-</head>
-<body>
-<div id="root"></div>
-
-<script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
-
-const API = 'http://localhost:8000';
-
-// ============================================================
-// API HOOKS
-// ============================================================
-
-function useApi(endpoint, deps = []) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetch_ = useCallback(async () => {
-    setLoading(true);
-    try {
-      const r = await fetch(API + endpoint);
-      const d = await r.json();
-      setData(d);
-      setError(null);
-    } catch(e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobAgent</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4ede0;
+      --surface: #fdf8f0;
+      --surface2: #ede5d6;
+      --surface3: #e4dace;
+      --border: rgba(160, 140, 110, 0.2);
+      --border-strong: rgba(160, 140, 110, 0.4);
+      --mint: #2db87a;
+      --mint-light: #e8f7f0;
+      --mint-mid: #a8e0c4;
+      --mint-dark: #1e9a63;
+      --cream-dark: #8b7355;
+      --text: #1e1a14;
+      --text-muted: #6b5c42;
+      --text-dim: #a89478;
+      --danger: #c0392b;
+      --danger-light: #fdecea;
+      --warn: #d4842a;
+      --warn-light: #fdf3e7;
+      --nav-h: 60px;
     }
-  }, [endpoint, ...deps]);
 
-  useEffect(() => { fetch_(); }, [fetch_]);
-  return { data, loading, error, refetch: fetch_ };
-}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; min-height: 100dvh; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
 
-// ============================================================
-// TOAST SYSTEM
-// ============================================================
+    /* AUTH */
+    .auth-wrap { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+    .auth-left { background: var(--text); padding: 28px 22px; display: flex; flex-direction: column; gap: 18px; }
+    .auth-brand { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--bg); letter-spacing: -1px; }
+    .auth-brand span { color: var(--mint); }
+    .auth-tagline { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; color: var(--bg); line-height: 1.2; letter-spacing: -1px; }
+    .auth-tagline span { color: var(--mint); }
+    .auth-desc { font-size: 12.5px; color: rgba(244, 237, 224, 0.5); line-height: 1.6; font-weight: 300; }
+    .auth-features { display: flex; flex-direction: column; gap: 6px; }
+    .auth-feature { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: rgba(244, 237, 224, 0.4); }
+    .auth-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--mint); flex-shrink: 0; }
+    .auth-right { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 18px; background: var(--surface); }
+    .auth-box { width: 100%; max-width: 400px; }
+    .auth-title { font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 700; margin-bottom: 3px; letter-spacing: -0.5px; }
+    .auth-sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 20px; font-weight: 300; }
+    .auth-err { padding: 9px 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px; background: var(--danger-light); color: var(--danger); border: 1px solid rgba(192, 57, 43, 0.2); }
+    .form-grp { margin-bottom: 13px; }
+    .form-lbl { display: block; font-size: 10px; font-weight: 500; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.8px; font-family: 'DM Mono', monospace; }
+    .form-inp { width: 100%; padding: 11px 12px; background: var(--bg); border: 1.5px solid var(--border-strong); border-radius: 9px; font-size: 14px; color: var(--text); font-family: 'DM Sans', sans-serif; transition: all 0.15s; outline: none; -webkit-appearance: none; }
+    .form-inp:focus { border-color: var(--mint); background: white; box-shadow: 0 0 0 3px rgba(45, 184, 122, 0.1); }
+    .form-inp::placeholder { color: var(--text-dim); }
+    .pw-hint { font-size: 10.5px; color: var(--text-dim); margin-top: 4px; }
+    .btn-submit { width: 100%; padding: 12px; background: var(--text); color: var(--bg); border: none; border-radius: 9px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+    .auth-toggle { text-align: center; margin-top: 14px; font-size: 13px; color: var(--text-muted); }
+    .auth-toggle a { color: var(--mint-dark); cursor: pointer; font-weight: 500; }
 
-function ToastContainer({ toasts }) {
-  return (
-    <div className="toast-container">
-      {toasts.map(t => (
-        <div key={t.id} className={`toast ${t.type}`}>
-          <span>{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ'}</span>
-          {t.message}
+    /* LAYOUT */
+    .layout { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+    .main { flex: 1; padding: 14px 14px calc(var(--nav-h) + 14px); overflow-x: hidden; }
+
+    /* BOTTOM NAV */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--text); border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; align-items: stretch; z-index: 200; padding-bottom: env(safe-area-inset-bottom); }
+    .bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; color: rgba(255, 255, 255, 0.3); transition: color 0.15s; position: relative; border: none; background: none; font-family: 'DM Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .bn-item.active { color: var(--mint); }
+    .bn-ico { font-size: 17px; line-height: 1; }
+    .bn-lbl { font-size: 9px; font-weight: 500; letter-spacing: 0.2px; }
+    .bn-badge { position: absolute; top: 5px; right: calc(50% - 18px); background: var(--mint); color: white; font-size: 8.5px; font-family: 'DM Mono', monospace; padding: 0 4px; border-radius: 10px; min-width: 15px; text-align: center; line-height: 15px; }
+
+    /* TOPBAR */
+    .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .topbar-brand { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
+    .topbar-brand span { color: var(--mint); }
+    .topbar-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; font-family: 'Syne', sans-serif; cursor: pointer; flex-shrink: 0; border: none; }
+
+    /* PAGE HEADER */
+    .page-header { margin-bottom: 14px; }
+    .page-title { font-family: 'Syne', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; font-weight: 300; }
+    .hdr-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 9px; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; font-family: 'DM Sans', sans-serif; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+    .btn-primary { background: var(--text); color: var(--bg); }
+    .btn-mint { background: var(--mint); color: white; }
+    .btn-sec { background: var(--surface2); color: var(--text); border: 1px solid var(--border-strong); }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border-strong); }
+    .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(192,57,43,0.2); }
+    .btn-sm { padding: 5px 10px; font-size: 11.5px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px; position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 10px 10px 0 0; }
+    .stat-card.c-mint::before { background: var(--mint); }
+    .stat-card.c-cream::before { background: var(--cream-dark); }
+    .stat-card.c-warn::before { background: var(--warn); }
+    .stat-card.c-dim::before { background: var(--text-dim); }
+    .stat-lbl { font-size: 9.5px; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-dim); margin-bottom: 5px; }
+    .stat-val { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700; line-height: 1; margin-bottom: 2px; }
+    .stat-sub { font-size: 10.5px; color: var(--text-muted); }
+    .stat-ico { position: absolute; top: 11px; right: 11px; font-size: 16px; opacity: 0.1; }
+
+    /* CARD */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; margin-bottom: 14px; }
+    .card-hdr { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-ttl { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; }
+
+    /* LIST ITEMS */
+    .list-item { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 5px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .list-item:last-child { border-bottom: none; }
+    .list-item-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .list-item-title { font-size: 12.5px; font-weight: 500; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .list-item-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+    /* ACT ITEM */
+    .act-item { display: flex; gap: 9px; padding: 11px 14px; border-bottom: 1px solid var(--border); align-items: flex-start; }
+    .act-item:last-child { border-bottom: none; }
+    .act-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .act-ttl { font-size: 12px; color: var(--text); font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .act-meta { font-size: 10.5px; color: var(--text-dim); font-family: 'DM Mono', monospace; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+    /* BADGES */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 20px; font-size: 10px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+    .bdot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+    .b-mint { background: var(--mint-light); color: var(--mint-dark); }
+    .b-mint .bdot { background: var(--mint); }
+    .b-warn { background: var(--warn-light); color: var(--warn); }
+    .b-warn .bdot { background: var(--warn); }
+    .b-danger { background: var(--danger-light); color: var(--danger); }
+    .b-danger .bdot { background: var(--danger); }
+    .b-dim { background: var(--surface2); color: var(--text-muted); }
+    .b-dim .bdot { background: var(--text-dim); }
+    .b-cream { background: rgba(139, 115, 85, 0.12); color: var(--cream-dark); }
+    .b-cream .bdot { background: var(--cream-dark); }
+
+    /* SCORE */
+    .score-bar { display: flex; align-items: center; gap: 5px; }
+    .score-track { flex: 1; height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; max-width: 50px; }
+    .score-fill { height: 100%; border-radius: 2px; }
+    .score-n { font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--text-muted); min-width: 20px; }
+
+    /* LOADING / EMPTY */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 28px; color: var(--text-dim); font-size: 12.5px; gap: 8px; }
+    .spinner { width: 13px; height: 13px; border: 2px solid var(--border-strong); border-top-color: var(--mint); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 32px; color: var(--text-dim); }
+    .empty-ico { font-size: 24px; margin-bottom: 7px; opacity: 0.4; }
+
+    /* TOAST */
+    .toast-wrap { position: fixed; bottom: calc(var(--nav-h) + 8px); left: 10px; right: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 9999; }
+    .toast { background: var(--text); color: var(--bg); border-radius: 9px; padding: 10px 13px; font-size: 12px; display: flex; align-items: center; gap: 7px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); animation: slide-up 0.2s ease; }
+    .toast.success { border-left: 3px solid var(--mint); }
+    .toast.error { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--cream-dark); }
+    @keyframes slide-up { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* MODAL */
+    .modal-ov { position: fixed; inset: 0; background: rgba(30, 26, 20, 0.55); display: flex; align-items: flex-end; justify-content: center; z-index: 500; backdrop-filter: blur(3px); }
+    .modal { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 18px 18px 0 0; padding: 18px 16px; width: 100%; max-height: 88vh; overflow-y: auto; }
+    .modal-handle { width: 36px; height: 4px; background: var(--surface3); border-radius: 2px; margin: 0 auto 14px; }
+    .modal-ttl { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .modal-foot { display: flex; gap: 7px; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .email-pre { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 8px; padding: 11px; font-size: 11px; line-height: 1.7; color: var(--text-muted); white-space: pre-wrap; font-family: 'DM Mono', monospace; max-height: 180px; overflow-y: auto; }
+
+    /* FILTER */
+    .filter-bar { display: flex; gap: 5px; margin-bottom: 11px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .fbtn { padding: 5px 11px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid var(--border-strong); background: transparent; color: var(--text-muted); font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .fbtn.on { background: var(--mint-light); border-color: var(--mint-mid); color: var(--mint-dark); }
+
+    /* PROFILE */
+    .p-avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--mint), var(--mint-dark)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: white; font-family: 'Syne', sans-serif; margin: 0 auto 9px; border: 3px solid var(--mint-light); }
+    .p-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; text-align: center; margin-bottom: 2px; }
+    .p-email { font-size: 10px; color: var(--text-muted); font-family: 'DM Mono', monospace; text-align: center; margin-bottom: 11px; }
+    .p-stats { display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 11px; }
+    .p-stat-v { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: var(--mint-dark); text-align: center; }
+    .p-stat-l { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; font-family: 'DM Mono', monospace; text-align: center; }
+    .p-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
+    .p-tabs::-webkit-scrollbar { display: none; }
+    .p-tab { padding: 5px 11px; border-radius: 20px; font-size: 11.5px; cursor: pointer; border: 1px solid var(--border-strong); background: transparent; color: var(--text-muted); font-family: 'DM Sans', sans-serif; white-space: nowrap; flex-shrink: 0; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+    .p-tab.on { background: var(--mint-light); border-color: var(--mint-mid); color: var(--mint-dark); font-weight: 500; }
+    .fsec { margin-bottom: 20px; }
+    .fsec-ttl { font-family: 'Syne', sans-serif; font-size: 12.5px; font-weight: 600; margin-bottom: 11px; padding-bottom: 6px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .tags-wrap { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 9px; background: var(--bg); border: 1.5px solid var(--border-strong); border-radius: 9px; min-height: 38px; align-items: flex-start; transition: border-color 0.15s; }
+    .tags-wrap:focus-within { border-color: var(--mint); box-shadow: 0 0 0 3px rgba(45, 184, 122, 0.1); }
+    .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; background: var(--mint-light); border: 1px solid var(--mint-mid); border-radius: 20px; font-size: 11px; color: var(--mint-dark); font-weight: 500; }
+    .tag-x { cursor: pointer; color: var(--mint-mid); font-size: 12px; line-height: 1; }
+    .tag-inp { border: none; background: transparent; outline: none; font-size: 12px; color: var(--text); font-family: 'DM Sans', sans-serif; flex: 1; min-width: 70px; padding: 2px; }
+    .tag-inp::placeholder { color: var(--text-dim); }
+    textarea.form-inp { resize: vertical; min-height: 76px; line-height: 1.6; }
+    select.form-inp { cursor: pointer; }
+    .sec-info-row { display: flex; gap: 7px; padding: 8px 11px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border); margin-bottom: 6px; flex-wrap: wrap; }
+    .sec-key { font-size: 11px; font-weight: 600; color: var(--mint-dark); min-width: 95px; font-family: 'DM Mono', monospace; }
+    .sec-val { font-size: 11px; color: var(--text-muted); }
+
+    /* USER MENU */
+    .user-menu { background: var(--surface); border-radius: 18px 18px 0 0; padding: 18px 16px; }
+    .user-menu-name { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .user-menu-email { font-size: 10.5px; color: var(--text-muted); font-family: 'DM Mono', monospace; margin-bottom: 14px; }
+    .user-menu-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 13.5px; color: var(--text); -webkit-tap-highlight-color: transparent; }
+    .user-menu-item:active { background: var(--surface2); }
+
+    /* ═══════════════ TABLET / DESKTOP ≥640px ═══════════════ */
+    @media(min-width:640px) {
+      .auth-wrap { flex-direction: row; }
+      .auth-left { width: 44%; min-height: 100vh; padding: 44px; }
+      .auth-right { padding: 44px; }
+      .auth-tagline { font-size: 36px; }
+      .layout { flex-direction: row; }
+      .sidebar-desktop { width: 218px; background: var(--text); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; left: 0; top: 0; }
+      .bottom-nav { display: none; }
+      .main { margin-left: 218px; padding: 22px 26px; }
+      .toast-wrap { bottom: 18px; left: auto; right: 18px; width: 290px; }
+      .modal-ov { align-items: center; }
+      .modal { border-radius: 14px; width: 540px; max-width: 92vw; }
+      .modal-handle { display: none; }
+      .topbar { display: none; }
+      .stats-grid { grid-template-columns: repeat(4, 1fr); gap: 13px; margin-bottom: 18px; }
+      .stat-val { font-size: 28px; }
+      .page-title { font-size: 21px; }
+      .hdr-actions { margin-top: 0; }
+      .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+      .sb-brand { padding: 18px 16px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+      .sb-logo { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--bg); letter-spacing: -0.5px; }
+      .sb-logo span { color: var(--mint); }
+      .sb-version { font-size: 9px; color: rgba(255, 255, 255, 0.18); font-family: 'DM Mono', monospace; margin-top: 2px; }
+      .sb-user { padding: 11px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); display: flex; align-items: center; gap: 8px; }
+      .sb-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; font-family: 'Syne', sans-serif; flex-shrink: 0; }
+      .sb-uname { font-size: 12px; color: var(--bg); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sb-uemail { font-size: 9.5px; color: rgba(255, 255, 255, 0.25); font-family: 'DM Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .sb-nav { padding: 10px 7px; flex: 1; overflow-y: auto; }
+      .sb-section { font-size: 9px; color: rgba(255, 255, 255, 0.18); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 1.5px; padding: 0 9px; margin: 9px 0 4px; }
+      .nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 9px; border-radius: 7px; cursor: pointer; font-size: 12.5px; color: rgba(255, 255, 255, 0.4); transition: all 0.15s; margin-bottom: 1px; border: 1px solid transparent; }
+      .nav-item:hover { background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.75); }
+      .nav-item.active { background: rgba(45, 184, 122, 0.15); color: var(--mint); border-color: rgba(45, 184, 122, 0.2); font-weight: 500; }
+      .nav-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+      .nav-badge { margin-left: auto; background: var(--mint); color: white; font-size: 9px; font-family: 'DM Mono', monospace; padding: 1px 5px; border-radius: 10px; }
+      .sb-bottom { padding: 9px 7px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+      .btn-logout { width: 100%; padding: 8px; background: transparent; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 7px; color: rgba(255, 255, 255, 0.3); font-size: 11.5px; cursor: pointer; font-family: 'DM Sans', sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px; }
+      .btn-logout:hover { border-color: rgba(192, 57, 43, 0.3); color: #e07070; background: rgba(192, 57, 43, 0.05); }
+      .p-profile-desktop { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+      .p-side-card { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 18px; }
+      .p-tabs { display: none; }
+      .p-nav-desktop { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; }
+      .p-nav-item { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 12px; color: var(--text-muted); transition: all 0.15s; border: 1px solid transparent; }
+      .p-nav-item:hover { background: var(--surface2); color: var(--text); }
+      .p-nav-item.on { background: var(--mint-light); color: var(--mint-dark); border-color: var(--mint-mid); font-weight: 500; }
+    }
+
+    @media(min-width:1024px) {
+      .main { padding: 26px 30px; }
+      .sidebar-desktop { width: 226px; }
+      .main { margin-left: 226px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const API = 'https://agent-job-1.onrender.com';
+
+    const getToken = () => sessionStorage.getItem('jat');
+    const setToken = t => sessionStorage.setItem('jat', t);
+    const getUser = () => { try { return JSON.parse(sessionStorage.getItem('jau') || 'null'); } catch { return null; } };
+    const setUser = u => sessionStorage.setItem('jau', JSON.stringify(u));
+    const clearAuth = () => { sessionStorage.removeItem('jat'); sessionStorage.removeItem('jau'); };
+
+    async function api(path, opts = {}) {
+      const tok = getToken();
+      const hdrs = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+      if (tok) hdrs['Authorization'] = `Bearer ${tok}`;
+      const r = await fetch(API + path, { ...opts, headers: hdrs });
+      if (r.status === 401) { clearAuth(); window.location.reload(); return null; }
+      return r;
+    }
+
+    function useToast() {
+      const [items, setItems] = useState([]);
+      const add = (msg, type = 'info') => {
+        const id = Date.now();
+        setItems(p => [...p, { id, msg, type }]);
+        setTimeout(() => setItems(p => p.filter(t => t.id !== id)), 3500);
+      };
+      return { items, ok: m => add(m, 'success'), err: m => add(m, 'error'), info: m => add(m, 'info') };
+    }
+
+    function Toasts({ items }) {
+      return <div className="toast-wrap">{items.map(t => <div key={t.id} className={`toast ${t.type}`}><span>{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ'}</span>{t.msg}</div>)}</div>;
+    }
+
+    const ST = {
+      to_apply:           { l: '📋 À candidater', c: 'b-warn' },
+      sent:               { l: '📨 Envoyée',       c: 'b-mint' },
+      follow_up_needed:   { l: '🔔 À relancer',    c: 'b-warn' },
+      follow_up_sent:     { l: '🔁 Relancée',      c: 'b-cream' },
+      no_response:        { l: '😶 Sans réponse',  c: 'b-dim' },
+      interview:          { l: '🎯 Entretien',      c: 'b-mint' },
+      refused:            { l: '✕ Refus',           c: 'b-danger' },
+      archived:           { l: 'Archivée',          c: 'b-dim' },
+      pending_review:     { l: 'À valider',         c: 'b-warn' },
+      ready_to_send:      { l: 'Prête',             c: 'b-warn' },
+      response_received:  { l: 'Réponse',           c: 'b-mint' },
+      interview_proposed: { l: '🎯 Entretien',      c: 'b-mint' },
+    };
+    function SBadge({ s }) {
+      const d = ST[s] || { l: s, c: 'b-dim' };
+      return <span className={`badge ${d.c}`}><span className="bdot"></span>{d.l}</span>;
+    }
+    function ScoreBar({ s }) {
+      if (!s) return <span style={{ color: 'var(--text-dim)', fontSize: 10.5 }}>—</span>;
+      const col = s >= 80 ? 'var(--mint)' : s >= 60 ? 'var(--warn)' : 'var(--danger)';
+      return <div className="score-bar"><div className="score-track"><div className="score-fill" style={{ width: `${s}%`, background: col }}></div></div><span className="score-n">{s}</span></div>;
+    }
+
+    function TagInput({ values = [], onChange, placeholder }) {
+      const [inp, setInp] = useState('');
+      const add = () => { const v = inp.trim(); if (v && !values.includes(v)) onChange([...values, v]); setInp(''); };
+      return (
+        <div className="tags-wrap">
+          {values.map((v, i) => <span className="tag" key={i}>{v}<span className="tag-x" onClick={() => onChange(values.filter((_, j) => j !== i))}>×</span></span>)}
+          <input className="tag-inp" value={inp} onChange={e => setInp(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(); } }}
+            placeholder={values.length === 0 ? placeholder : 'Ajouter...'} />
         </div>
-      ))}
-    </div>
-  );
-}
+      );
+    }
 
-function useToast() {
-  const [toasts, setToasts] = useState([]);
-  const add = (message, type = 'info') => {
-    const id = Date.now();
-    setToasts(p => [...p, { id, message, type }]);
-    setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 3500);
-  };
-  return { toasts, success: m => add(m, 'success'), error: m => add(m, 'error'), info: m => add(m, 'info') };
-}
-
-// ============================================================
-// STATUS BADGE
-// ============================================================
-
-const STATUS_MAP = {
-  sent: { label: 'Envoyée', cls: 'sent' },
-  draft: { label: 'Brouillon', cls: 'draft' },
-  pending_review: { label: 'À valider', cls: 'draft' },
-  ready_to_send: { label: 'Prête', cls: 'draft' },
-  follow_up_sent: { label: 'Relancée', cls: 'followup' },
-  follow_up_scheduled: { label: 'Relance prévue', cls: 'followup' },
-  response_received: { label: 'Réponse reçue', cls: 'interview' },
-  interview_proposed: { label: 'Entretien 🎯', cls: 'interview' },
-  interview_confirmed: { label: 'Confirmé ✓', cls: 'interview' },
-  refused: { label: 'Refus', cls: 'refused' },
-  archived: { label: 'Archivée', cls: 'review' },
-};
-
-function StatusBadge({ status }) {
-  const s = STATUS_MAP[status] || { label: status, cls: 'review' };
-  return (
-    <span className={`badge badge-${s.cls}`}>
-      <span className="badge-dot"></span>
-      {s.label}
-    </span>
-  );
-}
-
-// ============================================================
-// SCORE BAR
-// ============================================================
-
-function ScoreBar({ score }) {
-  if (!score) return <span style={{color: 'var(--text-dim)', fontSize: 12}}>—</span>;
-  const color = score >= 80 ? '#68d391' : score >= 60 ? '#f6ad55' : '#fc8181';
-  return (
-    <div className="score-bar">
-      <div className="score-track">
-        <div className="score-fill" style={{ width: `${score}%`, background: color }}></div>
-      </div>
-      <span className="score-label">{score}</span>
-    </div>
-  );
-}
-
-// ============================================================
-// APPLICATION MODAL
-// ============================================================
-
-function AppModal({ app, onClose, toast }) {
-  const [sending, setSending] = useState(false);
-
-  const sendDraft = async (recipientEmail) => {
-    const email = prompt('Email du recruteur :', 'recruteur@entreprise.com');
-    if (!email) return;
-    setSending(true);
-    try {
-      const r = await fetch(`${API}/api/applications/${app.id}/send?mode=draft&recipient_email=${encodeURIComponent(email)}`, { method: 'POST' });
-      const d = await r.json();
-      if (d.draft_id) { toast.success('Brouillon créé dans Gmail !'); onClose(); }
-      else toast.error(d.detail || 'Erreur');
-    } catch(e) { toast.error('Erreur réseau'); }
-    finally { setSending(false); }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-title">📧 {app.offer}</div>
-        <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:16}}>{app.company}</div>
-        <div style={{marginBottom:8, fontSize:12, color:'var(--text-dim)', fontFamily:'DM Mono, monospace', textTransform:'uppercase', letterSpacing:'1px'}}>Sujet</div>
-        <div style={{fontSize:13, color:'var(--text)', marginBottom:16, padding:'10px 14px', background:'var(--bg)', borderRadius:8, border:'1px solid var(--border)'}}>{app.email_subject}</div>
-        <div style={{marginBottom:8, fontSize:12, color:'var(--text-dim)', fontFamily:'DM Mono, monospace', textTransform:'uppercase', letterSpacing:'1px'}}>Email</div>
-        <div className="email-preview">{app.email_body || 'Chargement...'}</div>
-        {app.cover_letter && <>
-          <div style={{marginBottom:8, fontSize:12, color:'var(--text-dim)', fontFamily:'DM Mono, monospace', textTransform:'uppercase', letterSpacing:'1px', marginTop:16}}>Lettre de motivation</div>
-          <div className="email-preview">{app.cover_letter}</div>
-        </>}
-        <div style={{display:'flex', gap:8, flexWrap:'wrap', marginTop:16, paddingTop:12, borderTop:'1px solid var(--border)'}}>
-          <StatusBadge status={app.status} />
-          {app.confidence && <span className="badge badge-review">Confiance : {Math.round(app.confidence * 100)}%</span>}
+    // ── AUTH ──
+    function AuthPage({ onLogin }) {
+      const [mode, setMode] = useState('login');
+      const [form, setForm] = useState({ email: '', password: '', full_name: '' });
+      const [err, setErr] = useState('');
+      const [loading, setLoading] = useState(false);
+      const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+      const submit = async () => {
+        setErr('');
+        if (!form.email || !form.password) { setErr('Champs requis'); return; }
+        if (mode === 'register' && !form.full_name) { setErr('Nom requis'); return; }
+        setLoading(true);
+        try {
+          const body = mode === 'login' ? { email: form.email, password: form.password } : { email: form.email, password: form.password, full_name: form.full_name };
+          const r = await fetch(`${API}/api/auth/${mode === 'login' ? 'login' : 'register'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          const d = await r.json();
+          if (!r.ok) { setErr(d.detail || 'Erreur'); return; }
+          const user = { id: d.user_id, email: d.email, full_name: d.full_name };
+          setToken(d.access_token); setUser(user); onLogin(user);
+        } catch { setErr('Serveur inaccessible'); }
+        finally { setLoading(false); }
+      };
+      return (
+        <div className="auth-wrap">
+          <div className="auth-left">
+            <div className="auth-brand">Job<span>Agent</span></div>
+            <div>
+              <div className="auth-tagline">Ton agent IA<br />pour décrocher<br />ton <span>job</span></div>
+              <div className="auth-desc" style={{ marginTop: 10 }}>Scraping, scoring, candidatures et relances auto.</div>
+            </div>
+            <div className="auth-features">
+              {['Scraping WTTJ + Indeed', 'Scoring GPT-4o-mini', 'Candidatures auto', 'Relances J+7'].map(f => (
+                <div className="auth-feature" key={f}><div className="auth-dot"></div>{f}</div>
+              ))}
+            </div>
+          </div>
+          <div className="auth-right">
+            <div className="auth-box">
+              <div className="auth-title">{mode === 'login' ? 'Connexion' : 'Créer un compte'}</div>
+              <div className="auth-sub">{mode === 'login' ? 'Accède à ton dashboard' : 'Configure ton agent'}</div>
+              {err && <div className="auth-err">⚠ {err}</div>}
+              {mode === 'register' && <div className="form-grp"><label className="form-lbl">Prénom & Nom</label><input className="form-inp" placeholder="Ibrahim Bah" value={form.full_name} onChange={e => set('full_name', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} /></div>}
+              <div className="form-grp"><label className="form-lbl">Email</label><input className="form-inp" type="email" placeholder="ton@email.com" value={form.email} onChange={e => set('email', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} /></div>
+              <div className="form-grp"><label className="form-lbl">Mot de passe</label><input className="form-inp" type="password" placeholder={mode === 'register' ? 'Min. 8 cars, 1 maj, 1 chiffre' : '••••••••'} value={form.password} onChange={e => set('password', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
+                {mode === 'register' && <div className="pw-hint">Min. 8 caractères · 1 majuscule · 1 chiffre</div>}</div>
+              <button className="btn-submit" onClick={submit} disabled={loading}>{loading && <span className="spinner"></span>}{loading ? '...' : (mode === 'login' ? 'Se connecter' : 'Créer mon compte')}</button>
+              <div className="auth-toggle">{mode === 'login' ? <>Pas de compte ? <a onClick={() => { setMode('register'); setErr(''); }}>Créer</a></> : <>Déjà inscrit ? <a onClick={() => { setMode('login'); setErr(''); }}>Se connecter</a></>}</div>
+            </div>
+          </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Fermer</button>
-          {['pending_review', 'ready_to_send', 'draft'].includes(app.status) &&
-            <button className="btn btn-primary" onClick={sendDraft} disabled={sending}>
-              {sending ? '...' : '📤 Créer brouillon Gmail'}
-            </button>
+      );
+    }
+
+    // ── DASHBOARD ──
+    function DashboardPage({ toast, user }) {
+      const [apps, setApps] = useState(null);
+      const [jobs, setJobs] = useState(null);
+      const [gmail, setGmail] = useState(null);
+      const [busy, setBusy] = useState({});
+      const setB = (k, v) => setBusy(p => ({ ...p, [k]: v }));
+      useEffect(() => {
+        api('/api/applications/').then(r => r?.json()).then(d => d && setApps(d));
+        api('/api/jobs/').then(r => r?.json()).then(d => d && setJobs(d));
+        api('/api/auth/gmail/status').then(r => r?.json()).then(d => d && setGmail(d));
+      }, []);
+      const stats = { total: apps?.length || 0, sent: apps?.filter(a => a.status === 'sent').length || 0, interviews: apps?.filter(a => ['interview_proposed', 'interview_confirmed'].includes(a.status)).length || 0, pending: apps?.filter(a => ['pending_review', 'ready_to_send'].includes(a.status)).length || 0, jobsTotal: jobs?.length || 0, shortlisted: jobs?.filter(j => j.status === 'shortlisted').length || 0 };
+      const action = async (key, path, method = 'POST', msg) => {
+        setB(key, true);
+        try {
+          const r = await api(path, { method });
+          if (!r) { toast.err('Erreur réseau'); return; }
+          const d = await r.json();
+          if (!r.ok) { toast.err(d.detail || 'Erreur serveur'); return; }
+          if (key === 'scrape') {
+            toast.info('🔍 Scraping en cours... (30-60 sec)');
+            // Polling toutes les 5s pour détecter les nouvelles offres
+            let attempts = 0;
+            const poll = setInterval(async () => {
+              attempts++;
+              const rj = await api('/api/jobs/');
+              const jobs = await rj.json();
+              if (jobs && jobs.length > 0) {
+                clearInterval(poll);
+                setB(key, false);
+                toast.ok(`✅ ${jobs.length} offres trouvées !`);
+                setJobs(jobs);
+              } else if (attempts >= 12) { // 60s max
+                clearInterval(poll);
+                setB(key, false);
+                toast.err('⚠ Scraping terminé — aucune offre trouvée');
+              }
+            }, 5000);
+            return;
           }
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// DASHBOARD PAGE
-// ============================================================
-
-function DashboardPage({ toast }) {
-  const { data: apps, loading: appsLoading } = useApi('/api/applications/');
-  const { data: jobs } = useApi('/api/jobs/');
-  const { data: gmailStatus } = useApi('/api/auth/gmail/status');
-  const [scraping, setScraping] = useState(false);
-  const [scoring, setScoring] = useState(false);
-  const [classifying, setClassifying] = useState(false);
-
-  const stats = apps ? {
-    total: apps.length,
-    sent: apps.filter(a => a.status === 'sent').length,
-    interviews: apps.filter(a => ['interview_proposed','interview_confirmed'].includes(a.status)).length,
-    pending: apps.filter(a => ['pending_review','ready_to_send'].includes(a.status)).length,
-  } : {};
-
-  const jobStats = jobs ? {
-    total: jobs.length,
-    shortlisted: jobs.filter(j => j.status === 'shortlisted').length,
-    ignored: jobs.filter(j => j.status === 'ignored').length,
-  } : {};
-
-  const triggerScrape = async () => {
-    setScraping(true);
-    try {
-      const r = await fetch(`${API}/api/jobs/scrape`, { method: 'POST' });
-      const d = await r.json();
-      toast.success('Scraping lancé en arrière-plan');
-    } catch(e) { toast.error('Erreur scraping'); }
-    finally { setTimeout(() => setScraping(false), 3000); }
-  };
-
-  const triggerScoreAll = async () => {
-    setScoring(true);
-    try {
-      const r = await fetch(`${API}/api/jobs/score-all`, { method: 'POST' });
-      const d = await r.json();
-      toast.success(`${d.scored || 0} offres scorées`);
-    } catch(e) { toast.error('Erreur scoring'); }
-    finally { setScoring(false); }
-  };
-
-  const triggerClassify = async () => {
-    setClassifying(true);
-    try {
-      const r = await fetch(`${API}/api/applications/classify-responses`, { method: 'POST' });
-      const d = await r.json();
-      if (d.classified > 0) toast.success(`${d.classified} réponse(s) classifiée(s)`);
-      else toast.info('Aucun email non traité');
-    } catch(e) { toast.error('Erreur classification'); }
-    finally { setClassifying(false); }
-  };
-
-  const recentApps = apps ? apps.slice(0, 5) : [];
-  const topOffers = jobs ? jobs.filter(j => j.relevance_score).sort((a,b) => b.relevance_score - a.relevance_score).slice(0, 4) : [];
-
-  return (
-    <div>
-      <div className="page-header">
+          toast.ok(msg || (d.scored ? `${d.scored} offres scorées` : 'Lancé !'));
+        } catch { toast.err('Erreur réseau — serveur inaccessible'); }
+        finally { if (key !== 'scrape') setTimeout(() => setB(key, false), 2500); }
+      };
+      return (
         <div>
-          <div className="page-title">Vue d'ensemble</div>
-          <div className="page-subtitle">
-            {gmailStatus?.connected
-              ? `✓ Gmail connecté — ${gmailStatus.email}`
-              : '⚠ Gmail non connecté'}
+          <div className="topbar">
+            <div className="topbar-brand">Job<span>Agent</span></div>
+            <button className="btn btn-mint btn-sm" disabled={busy.scrape} onClick={() => action('scrape', '/api/jobs/scrape', 'POST')}>{busy.scrape ? <><span className="spinner"></span></> : '🔍'}</button>
           </div>
-        </div>
-        <div className="header-actions">
-          <button className="btn btn-secondary btn-sm" onClick={triggerClassify} disabled={classifying}>
-            {classifying ? <span className="spinner"></span> : '📬'} Classifier réponses
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={triggerScoreAll} disabled={scoring}>
-            {scoring ? <span className="spinner"></span> : '⚡'} Scorer offres
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={triggerScrape} disabled={scraping}>
-            {scraping ? <span className="spinner"></span> : '🔍'} Lancer scraping
-          </button>
-        </div>
-      </div>
-
-      {/* STATS */}
-      <div className="stats-grid">
-        <div className="stat-card purple">
-          <span className="stat-icon">📨</span>
-          <div className="stat-label">Candidatures</div>
-          <div className="stat-value">{appsLoading ? '—' : stats.total}</div>
-          <div className="stat-sub">{stats.sent} envoyées</div>
-        </div>
-        <div className="stat-card teal">
-          <span className="stat-icon">🎯</span>
-          <div className="stat-label">Entretiens</div>
-          <div className="stat-value">{appsLoading ? '—' : stats.interviews}</div>
-          <div className="stat-sub">proposés / confirmés</div>
-        </div>
-        <div className="stat-card orange">
-          <span className="stat-icon">⏳</span>
-          <div className="stat-label">À valider</div>
-          <div className="stat-value">{appsLoading ? '—' : stats.pending}</div>
-          <div className="stat-sub">brouillons en attente</div>
-        </div>
-        <div className="stat-card green">
-          <span className="stat-icon">📋</span>
-          <div className="stat-label">Offres scrapées</div>
-          <div className="stat-value">{jobStats.total || '—'}</div>
-          <div className="stat-sub">{jobStats.shortlisted || 0} shortlistées</div>
-        </div>
-      </div>
-
-      <div className="grid-2">
-        {/* RECENT APPLICATIONS */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Candidatures récentes</span>
-            <span className="api-chip">GET /api/applications/</span>
+          <div className="page-header">
+            <div><div className="page-title">Bonjour {user?.full_name?.split(' ')[0] || 'là'} 👋</div><div className="page-sub">{gmail?.connected ? `✓ Gmail — ${gmail.email}` : '⚠ Gmail non connecté'}</div></div>
+            <div className="hdr-actions">
+              <button className="btn btn-sec btn-sm" disabled={busy.cls} onClick={() => action('cls', '/api/applications/classify-responses', 'POST', 'Emails classifiés')}>{busy.cls ? <span className="spinner"></span> : '📬'} Classifier</button>
+              <button className="btn btn-sec btn-sm" disabled={busy.score} onClick={() => action('score', '/api/jobs/score-all', 'POST')}>{busy.score ? <span className="spinner"></span> : '⚡'} Scorer</button>
+              <button className="btn btn-mint btn-sm" disabled={busy.scrape} onClick={() => action('scrape', '/api/jobs/scrape', 'POST')}>{busy.scrape ? <><span className="spinner"></span> En cours...</> : '🔍 Scraper'}</button>
+            </div>
           </div>
-          <div className="card-body">
-            {appsLoading ? <div className="loading"><span className="spinner"></span> Chargement...</div> :
-             recentApps.length === 0 ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-text">Aucune candidature</div></div> :
-             recentApps.map(a => (
-              <div className="activity-item" key={a.id}>
-                <div className="activity-dot" style={{background: a.status === 'interview_proposed' ? '#68d391' : a.status === 'refused' ? '#fc8181' : a.status === 'sent' ? '#7c6af7' : '#f6ad55'}}></div>
-                <div className="activity-content">
-                  <div className="activity-title">{a.offer}</div>
-                  <div className="activity-meta">{a.company} · <StatusBadge status={a.status} /></div>
-                </div>
+          <div className="stats-grid">
+            {[{ c: 'c-mint', ico: '📨', lbl: 'Candidatures', val: stats.total, sub: `${stats.sent} envoyées` }, { c: 'c-cream', ico: '🎯', lbl: 'Entretiens', val: stats.interviews, sub: 'proposés' }, { c: 'c-warn', ico: '⏳', lbl: 'À valider', val: stats.pending, sub: 'en attente' }, { c: 'c-dim', ico: '📋', lbl: 'Offres', val: stats.jobsTotal, sub: `${stats.shortlisted} shortlistées` }].map(s => (
+              <div className={`stat-card ${s.c}`} key={s.lbl}><span className="stat-ico">{s.ico}</span><div className="stat-lbl">{s.lbl}</div><div className="stat-val">{s.val}</div><div className="stat-sub">{s.sub}</div></div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="card-hdr"><span className="card-ttl">Candidatures récentes</span></div>
+            {!apps ? <div className="loading"><span className="spinner"></span>Chargement...</div> : apps.length === 0 ? <div className="empty"><div className="empty-ico">📭</div><div>Aucune candidature</div></div> : apps.slice(0, 5).map(a => (
+              <div className="act-item" key={a.id}>
+                <div className="act-dot" style={{ background: a.status === 'interview_proposed' ? 'var(--mint)' : a.status === 'refused' ? 'var(--danger)' : a.status === 'sent' ? 'var(--cream-dark)' : 'var(--warn)' }}></div>
+                <div style={{ flex: 1, minWidth: 0 }}><div className="act-ttl">{a.offer}</div><div className="act-meta"><span>{a.company}</span><SBadge s={a.status} /></div></div>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* TOP OFFERS */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Meilleures offres</span>
-            <span className="api-chip">GET /api/jobs/</span>
-          </div>
-          <div className="card-body">
-            {topOffers.length === 0 ? <div className="empty"><div className="empty-icon">🔍</div><div className="empty-text">Lance un scraping</div></div> :
-             topOffers.map(j => (
-              <div className="activity-item" key={j.id}>
-                <div className="activity-dot" style={{background: j.relevance_score >= 80 ? '#68d391' : j.relevance_score >= 60 ? '#f6ad55' : '#fc8181'}}></div>
-                <div className="activity-content">
-                  <div className="activity-title">{j.title}</div>
-                  <div className="activity-meta" style={{display:'flex', alignItems:'center', gap:8}}>
-                    <span>{j.platform}</span>
-                    <ScoreBar score={j.relevance_score} />
+          <div className="card">
+            <div className="card-hdr"><span className="card-ttl">Meilleures offres</span></div>
+            {!jobs ? <div className="loading"><span className="spinner"></span>Chargement...</div> :
+              jobs.filter(j => j.relevance_score).sort((a, b) => b.relevance_score - a.relevance_score).slice(0, 5).length === 0
+                ? <div className="empty"><div className="empty-ico">🔍</div><div>Lance un scraping</div></div>
+                : jobs.filter(j => j.relevance_score).sort((a, b) => b.relevance_score - a.relevance_score).slice(0, 5).map(j => (
+                  <div className="act-item" key={j.id}>
+                    <div className="act-dot" style={{ background: j.relevance_score >= 80 ? 'var(--mint)' : j.relevance_score >= 60 ? 'var(--warn)' : 'var(--danger)' }}></div>
+                    <div style={{ flex: 1, minWidth: 0 }}><div className="act-ttl">{j.title}</div><div className="act-meta"><span>{j.platform}</span><ScoreBar s={j.relevance_score} /></div></div>
                   </div>
+                ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── APPLICATIONS ──
+    function ApplicationsPage({ toast }) {
+      const [apps, setApps] = useState(null);
+      const [filter, setFilter] = useState('all');
+      const [sel, setSel] = useState(null);
+      const [gen, setGen] = useState(false);
+      const load = () => api('/api/applications/').then(r => r?.json()).then(d => d && setApps(d));
+      useEffect(() => { load(); }, []);
+      const filtered = apps ? apps.filter(a => filter === 'all' ? true : filter === 'pending' ? ['to_apply', 'follow_up_needed'].includes(a.status) : filter === 'sent' ? a.status === 'sent' : filter === 'interview' ? ['interview', 'interview_proposed'].includes(a.status) : filter === 'followup' ? ['follow_up_sent', 'follow_up_needed'].includes(a.status) : filter === 'no_response' ? a.status === 'no_response' : a.status === 'refused') : [];
+      const loadDet = async id => { const r = await api(`/api/applications/${id}`); const d = await r.json(); setSel(d); };
+      const confirmAction = async (id, action, msg, reload) => {
+        try {
+          await api(`/api/applications/${id}/${action}`, { method: 'PATCH' });
+          toast.ok(msg);
+          reload();
+        } catch { toast.err('Erreur'); }
+      };
+      const genBatch = async () => { setGen(true); try { const r = await api('/api/applications/generate-batch?limit=5', { method: 'POST' }); const d = await r.json(); toast.ok(`${d.generated} candidature(s)`); load(); } catch { toast.err('Erreur'); } finally { setGen(false); } };
+      const FILTERS = [{ k: 'all', l: 'Toutes' }, { k: 'pending', l: '📋 À candidater' }, { k: 'sent', l: '📨 Envoyées' }, { k: 'followup', l: '🔁 À relancer' }, { k: 'no_response', l: '😶 Sans réponse' }, { k: 'interview', l: '🎯 Entretiens' }, { k: 'refused', l: '✕ Refus' }];
+      return (
+        <div>
+          <div className="topbar"><div className="topbar-brand">Candidatures</div><button className="btn btn-mint btn-sm" onClick={genBatch} disabled={gen}>{gen ? <span className="spinner"></span> : '✨'}</button></div>
+          <div className="page-header">
+            <div><div className="page-title">Candidatures</div><div className="page-sub">{apps ? `${apps.length} au total` : ''}</div></div>
+            <div className="hdr-actions">
+              <button className="btn btn-sec btn-sm" onClick={() => api('/api/applications/check-followup-deadlines', { method: 'POST' }).then(() => { toast.info('Relances vérifiées'); load(); })}>🔁 Relances</button>
+              <button className="btn btn-mint btn-sm" onClick={genBatch} disabled={gen}>{gen ? <span className="spinner"></span> : '✨'} Générer</button>
+            </div>
+          </div>
+          <div className="filter-bar">{FILTERS.map(f => <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>{f.l}</button>)}</div>
+          <div className="card">
+            {!apps ? <div className="loading"><span className="spinner"></span>Chargement...</div> : filtered.length === 0 ? <div className="empty"><div className="empty-ico">📭</div><div>Aucune candidature</div></div> : filtered.map(a => (
+              <div className="list-item" key={a.id}>
+                <div className="list-item-row" onClick={() => loadDet(a.id)} style={{cursor:'pointer'}}>
+                  <div className="list-item-title">{a.offer}</div>
+                  <SBadge s={a.status} />
+                </div>
+                <div className="list-item-meta">
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{a.company}</span>
+                  {a.confidence && <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10.5, color: a.confidence >= 0.85 ? 'var(--mint-dark)' : 'var(--warn)' }}>{Math.round(a.confidence * 100)}%</span>}
+                  <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text-dim)' }}>{new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
+                </div>
+                {/* Boutons d'action rapide selon le statut */}
+                <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+                  {a.status === 'to_apply' && <>
+                    <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-sent', 'Envoyé ✓', load)}>✅ Envoyé</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir mail</button>
+                  </>}
+                  {a.status === 'follow_up_needed' && <>
+                    <button className="btn btn-sec btn-sm" onClick={() => confirmAction(a.id, 'confirm-followup-sent', 'Relance confirmée ✓', load)}>🔁 J'ai relancé</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir relance</button>
+                  </>}
+                  {['sent', 'follow_up_sent', 'follow_up_needed', 'no_response'].includes(a.status) && <>
+                    <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-interview', '🎯 Entretien enregistré !', load)}>🎯 Entretien</button>
+                    <button className="btn btn-sm" style={{background:'var(--danger-light)',color:'var(--danger)',border:'1px solid rgba(192,57,43,0.2)'}} onClick={() => confirmAction(a.id, 'confirm-refused', 'Refus enregistré', load)}>✕ Refus</button>
+                  </>}
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+          {sel && (
+            <div className="modal-ov" onClick={() => setSel(null)}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-handle"></div>
+                <div className="modal-ttl">{sel.offer}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 11 }}>{sel.company}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Sujet</div>
+                <div style={{ fontSize: 12.5, padding: '8px 11px', background: 'var(--bg)', borderRadius: 7, border: '1px solid var(--border-strong)', marginBottom: 11 }}>{sel.email_subject}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Email</div>
+                <div className="email-pre">{sel.email_body}</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 9, flexWrap: 'wrap' }}>
+                  <SBadge s={sel.status} />
+                  {sel.confidence && <span className="badge b-dim">Confiance : {Math.round(sel.confidence * 100)}%</span>}
 
-// ============================================================
-// APPLICATIONS PAGE
-// ============================================================
-
-function ApplicationsPage({ toast }) {
-  const [filter, setFilter] = useState('all');
-  const [selectedApp, setSelectedApp] = useState(null);
-  const { data: apps, loading, refetch } = useApi('/api/applications/');
-  const [generating, setGenerating] = useState(false);
-
-  const filtered = apps ? apps.filter(a => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return ['pending_review','ready_to_send'].includes(a.status);
-    if (filter === 'sent') return a.status === 'sent';
-    if (filter === 'interview') return ['interview_proposed','interview_confirmed'].includes(a.status);
-    if (filter === 'followup') return ['follow_up_sent','follow_up_scheduled'].includes(a.status);
-    if (filter === 'refused') return a.status === 'refused';
-    return true;
-  }) : [];
-
-  const loadApp = async (id) => {
-    const r = await fetch(`${API}/api/applications/${id}`);
-    const d = await r.json();
-    setSelectedApp(d);
-  };
-
-  const generateBatch = async () => {
-    setGenerating(true);
-    try {
-      const r = await fetch(`${API}/api/applications/generate-batch?limit=5`, { method: 'POST' });
-      const d = await r.json();
-      toast.success(`${d.generated} candidature(s) générée(s)`);
-      refetch();
-    } catch(e) { toast.error('Erreur génération'); }
-    finally { setGenerating(false); }
-  };
-
-  const triggerFollowups = async () => {
-    try {
-      const r = await fetch(`${API}/api/applications/trigger-followups`, { method: 'POST' });
-      const d = await r.json();
-      toast.info('Vérification des relances lancée');
-    } catch(e) { toast.error('Erreur relances'); }
-  };
-
-  const FILTERS = [
-    { key: 'all', label: 'Toutes' },
-    { key: 'pending', label: '⏳ À valider' },
-    { key: 'sent', label: '📨 Envoyées' },
-    { key: 'interview', label: '🎯 Entretiens' },
-    { key: 'followup', label: '🔁 Relancées' },
-    { key: 'refused', label: '✕ Refus' },
-  ];
-
-  return (
-    <div>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Candidatures</div>
-          <div className="page-subtitle">{apps ? `${apps.length} candidatures au total` : ''}</div>
-        </div>
-        <div className="header-actions">
-          <button className="btn btn-secondary btn-sm" onClick={triggerFollowups}>🔁 Vérifier relances</button>
-          <button className="btn btn-primary btn-sm" onClick={generateBatch} disabled={generating}>
-            {generating ? <span className="spinner"></span> : '✨'} Générer candidatures
-          </button>
-        </div>
-      </div>
-
-      <div className="filter-bar" style={{marginBottom:16}}>
-        {FILTERS.map(f => (
-          <button key={f.key} className={`filter-btn ${filter === f.key ? 'active' : ''}`} onClick={() => setFilter(f.key)}>
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="card">
-        <div className="card-body">
-          {loading ? <div className="loading"><span className="spinner"></span> Chargement...</div> :
-           filtered.length === 0 ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-text">Aucune candidature</div></div> : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Poste</th>
-                  <th>Entreprise</th>
-                  <th>Statut</th>
-                  <th>Confiance</th>
-                  <th>Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(a => (
-                  <tr key={a.id}>
-                    <td className="title-cell" style={{maxWidth:220, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{a.offer}</td>
-                    <td>{a.company}</td>
-                    <td><StatusBadge status={a.status} /></td>
-                    <td>
-                      {a.confidence ?
-                        <span style={{fontFamily:'DM Mono,monospace', fontSize:12, color: a.confidence >= 0.85 ? 'var(--success)' : 'var(--accent3)'}}>
-                          {Math.round(a.confidence * 100)}%
-                        </span> : '—'}
-                    </td>
-                    <td style={{fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-dim)'}}>
-                      {new Date(a.created_at).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td>
-                      <div className="actions-row">
-                        <button className="btn btn-secondary btn-sm" onClick={() => loadApp(a.id)}>👁 Voir</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-
-      {selectedApp && <AppModal app={selectedApp} onClose={() => setSelectedApp(null)} toast={toast} />}
-    </div>
-  );
-}
-
-// ============================================================
-// OFFERS PAGE
-// ============================================================
-
-function OffersPage({ toast }) {
-  const [filter, setFilter] = useState('all');
-  const { data: jobs, loading, refetch } = useApi('/api/jobs/');
-  const [scoring, setScoring] = useState(false);
-  const [scraping, setScraping] = useState(false);
-  const [generating, setGenerating] = useState({});
-
-  const filtered = jobs ? jobs.filter(j => {
-    if (filter === 'all') return true;
-    return j.status === filter;
-  }) : [];
-
-  const scoreAll = async () => {
-    setScoring(true);
-    try {
-      const r = await fetch(`${API}/api/jobs/score-all`, { method: 'POST' });
-      const d = await r.json();
-      toast.success(`${d.scored} offres scorées`);
-      refetch();
-    } catch(e) { toast.error('Erreur'); }
-    finally { setScoring(false); }
-  };
-
-  const scrape = async () => {
-    setScraping(true);
-    try {
-      await fetch(`${API}/api/jobs/scrape`, { method: 'POST' });
-      toast.success('Scraping lancé !');
-    } catch(e) { toast.error('Erreur scraping'); }
-    finally { setTimeout(() => setScraping(false), 3000); }
-  };
-
-  const generateForOffer = async (offerId) => {
-    setGenerating(p => ({...p, [offerId]: true}));
-    try {
-      const r = await fetch(`${API}/api/applications/generate/${offerId}`, { method: 'POST' });
-      const d = await r.json();
-      toast.success(`Candidature générée (${Math.round((d.confidence||0)*100)}% confiance)`);
-    } catch(e) { toast.error('Erreur génération'); }
-    finally { setGenerating(p => ({...p, [offerId]: false})); }
-  };
-
-  const FILTERS = [
-    { key: 'all', label: 'Toutes' },
-    { key: 'to_review', label: '🔍 À analyser' },
-    { key: 'shortlisted', label: '⭐ Shortlistées' },
-    { key: 'to_apply', label: '📤 À candidater' },
-    { key: 'ignored', label: '✕ Ignorées' },
-  ];
-
-  return (
-    <div>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Offres d'emploi</div>
-          <div className="page-subtitle">{jobs ? `${jobs.length} offres en base` : ''}</div>
-        </div>
-        <div className="header-actions">
-          <button className="btn btn-secondary btn-sm" onClick={scoreAll} disabled={scoring}>
-            {scoring ? <span className="spinner"></span> : '⚡'} Scorer (10 suivantes)
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={scrape} disabled={scraping}>
-            {scraping ? <span className="spinner"></span> : '🔍'} Scraper WTTJ
-          </button>
-        </div>
-      </div>
-
-      <div className="filter-bar" style={{marginBottom:16}}>
-        {FILTERS.map(f => (
-          <button key={f.key} className={`filter-btn ${filter === f.key ? 'active' : ''}`} onClick={() => setFilter(f.key)}>
-            {f.label} {jobs ? `(${jobs.filter(j => f.key === 'all' ? true : j.status === f.key).length})` : ''}
-          </button>
-        ))}
-      </div>
-
-      <div className="card">
-        <div className="card-body">
-          {loading ? <div className="loading"><span className="spinner"></span> Chargement...</div> :
-           filtered.length === 0 ? <div className="empty"><div className="empty-icon">🔍</div><div className="empty-text">Lance un scraping pour importer des offres</div></div> : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Titre</th>
-                  <th>Plateforme</th>
-                  <th>Localisation</th>
-                  <th>Score</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(j => (
-                  <tr key={j.id}>
-                    <td className="title-cell" style={{maxWidth:240, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{j.title}</td>
-                    <td>
-                      <span className="badge badge-review" style={{textTransform:'uppercase'}}>{j.platform}</span>
-                    </td>
-                    <td style={{fontSize:12, color:'var(--text-muted)'}}>{j.location || '—'}</td>
-                    <td><ScoreBar score={j.relevance_score} /></td>
-                    <td>
-                      <span className={`badge badge-${j.status === 'shortlisted' ? 'interview' : j.status === 'ignored' ? 'refused' : 'review'}`}>
-                        <span className="badge-dot"></span>
-                        {j.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="actions-row">
-                        {j.status === 'shortlisted' &&
-                          <button className="btn btn-primary btn-sm" onClick={() => generateForOffer(j.id)} disabled={generating[j.id]}>
-                            {generating[j.id] ? <span className="spinner"></span> : '✨'} Candidater
-                          </button>
-                        }
-                        <a href={j.url} target="_blank" rel="noopener" className="btn btn-secondary btn-sm">🔗</a>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// SETTINGS PAGE
-// ============================================================
-
-function SettingsPage({ toast }) {
-  const { data: gmailStatus } = useApi('/api/auth/gmail/status');
-
-  return (
-    <div>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Paramètres</div>
-          <div className="page-subtitle">Configuration de l'agent</div>
-        </div>
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header"><span className="card-title">📧 Connexion Gmail</span></div>
-          <div style={{padding:20}}>
-            {gmailStatus?.connected ? (
-              <div>
-                <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:12}}>
-                  <span style={{color:'var(--success)', fontSize:18}}>✓</span>
-                  <div>
-                    <div style={{fontSize:13, fontWeight:500}}>{gmailStatus.email}</div>
-                    <div style={{fontSize:12, color:'var(--text-muted)'}}>{gmailStatus.messages_total?.toLocaleString()} messages</div>
+                </div>
+                {/* Boutons de confirmation manuelle */}
+                <div style={{ display: 'flex', gap: 6, marginTop: 11, flexWrap: 'wrap' }}>
+                  {sel.status === 'to_apply' && <button className="btn btn-mint btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-sent`, { method: 'PATCH' }); toast.ok('Marqué comme envoyé ✓'); setSel(null); load(); }}>✅ J'ai candidaté</button>}
+                  {sel.status === 'follow_up_needed' && <button className="btn btn-sec btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-followup-sent`, { method: 'PATCH' }); toast.ok('Relance confirmée ✓'); setSel(null); load(); }}>🔁 J'ai relancé</button>}
+                  {['sent', 'follow_up_sent', 'follow_up_needed'].includes(sel.status) && <button className="btn btn-mint btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-interview`, { method: 'PATCH' }); toast.ok('Entretien enregistré 🎯'); setSel(null); load(); }}>🎯 Entretien obtenu</button>}
+                  {['sent', 'follow_up_sent', 'no_response'].includes(sel.status) && <button className="btn btn-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid rgba(192,57,43,0.2)' }} onClick={async () => { await api(`/api/applications/${sel.id}/confirm-refused`, { method: 'PATCH' }); toast.info('Refus enregistré'); setSel(null); load(); }}>✕ Refus</button>}
+                </div>
+                {sel.cover_letter && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Lettre de motivation</div>
+                    <div className="email-pre">{sel.cover_letter}</div>
+                    <button className="btn btn-ghost btn-sm" style={{marginTop:6}} onClick={() => { navigator.clipboard.writeText(sel.cover_letter); toast.ok('Lettre copiée !'); }}>📋 Copier la lettre</button>
                   </div>
-                </div>
-                <div style={{fontSize:12, color:'var(--text-dim)', padding:'10px 14px', background:'var(--bg)', borderRadius:8, border:'1px solid var(--border)'}}>
-                  Token OAuth2 actif — accès sécurisé via scopes minimaux
-                </div>
+                )}
+                {sel.email_body && (
+                  <div style={{ marginTop: 10, display:'flex', gap:6 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(sel.email_subject + '\n\n' + sel.email_body); toast.ok('Mail copié !'); }}>📋 Copier le mail</button>
+                    {sel.offer_url && <a href={sel.offer_url} target="_blank" className="btn btn-mint btn-sm">🔗 Voir & candidater</a>}
+                  </div>
+                )}
+                {sel.followup_email_body && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Mail de relance — à copier-coller</div>
+                    <div className="email-pre">{sel.followup_email_body}</div>
+                    <button className="btn btn-ghost btn-sm" style={{marginTop:6}} onClick={() => { navigator.clipboard.writeText(sel.followup_email_body); toast.ok('Relance copiée !'); }}>📋 Copier la relance</button>
+                  </div>
+                )}
+                <div className="modal-foot"><button className="btn btn-ghost" onClick={() => setSel(null)}>Fermer</button></div>
               </div>
-            ) : (
-              <div>
-                <div style={{color:'var(--danger)', marginBottom:12, fontSize:13}}>⚠ Gmail non connecté</div>
-                <div style={{fontSize:12, color:'var(--text-muted)', fontFamily:'DM Mono,monospace'}}>
-                  Exécute dans le terminal :<br/>
-                  <span style={{color:'var(--accent)'}}>python3 scripts/auth_gmail.py</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header"><span className="card-title">⚙️ Paramètres agent</span></div>
-          <div style={{padding:20}}>
-            {[
-              ['Score minimum', '60/100', 'Seuil pour shortlister une offre'],
-              ['Envoi automatique', '85%', 'Seuil de confiance LLM'],
-              ['Max candidatures/jour', '5', 'Limite anti-spam'],
-              ['Délai relance', '7 jours', 'Sans réponse → relance automatique'],
-            ].map(([k, v, desc]) => (
-              <div key={k} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid var(--border)'}}>
-                <div>
-                  <div style={{fontSize:13, color:'var(--text)'}}>{k}</div>
-                  <div style={{fontSize:11, color:'var(--text-dim)'}}>{desc}</div>
-                </div>
-                <span style={{fontFamily:'DM Mono,monospace', fontSize:13, color:'var(--accent)'}}>{v}</span>
-              </div>
-            ))}
-            <div style={{fontSize:12, color:'var(--text-dim)', marginTop:12}}>
-              Modifier dans <span style={{color:'var(--accent)', fontFamily:'DM Mono,monospace'}}>backend/.env</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header"><span className="card-title">🤖 Modèles LLM</span></div>
-          <div style={{padding:20}}>
-            {[
-              ['Analyse offres', 'gpt-4o-mini', 'Extraction compétences'],
-              ['Scoring', 'gpt-4o-mini', 'Pertinence profil/offre'],
-              ['Génération candidature', 'gpt-4o-mini', 'Email + lettre motivation'],
-              ['Classification emails', 'gpt-4o-mini', 'Détection réponses'],
-              ['Relances', 'gpt-4o-mini', 'Rédaction relance'],
-            ].map(([task, model, desc]) => (
-              <div key={task} style={{display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid var(--border)'}}>
-                <div style={{fontSize:12, color:'var(--text-muted)'}}>{task}<br/><span style={{fontSize:11, color:'var(--text-dim)'}}>{desc}</span></div>
-                <span className="badge badge-sent">{model}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header"><span className="card-title">📡 API Endpoints</span></div>
-          <div style={{padding:20}}>
-            {[
-              ['POST', '/api/jobs/scrape', 'Lancer le scraping'],
-              ['POST', '/api/jobs/score-all', 'Scorer les offres'],
-              ['POST', '/api/applications/generate-batch', 'Générer candidatures'],
-              ['POST', '/api/applications/classify-responses', 'Classifier emails'],
-              ['POST', '/api/applications/trigger-followups', 'Déclencher relances'],
-              ['GET', '/api/auth/gmail/status', 'Statut Gmail'],
-            ].map(([method, path, desc]) => (
-              <div key={path} style={{display:'flex', gap:8, alignItems:'center', padding:'7px 0', borderBottom:'1px solid var(--border)'}}>
-                <span style={{fontFamily:'DM Mono,monospace', fontSize:10, padding:'2px 6px', borderRadius:4, background: method==='GET' ? 'rgba(37,168,126,0.15)' : 'rgba(62,201,154,0.15)', color: method==='GET' ? 'var(--accent2)' : 'var(--accent)', minWidth:40, textAlign:'center'}}>{method}</span>
-                <span style={{fontFamily:'DM Mono,monospace', fontSize:11, color:'var(--text-muted)', flex:1}}>{path}</span>
-                <span style={{fontSize:11, color:'var(--text-dim)'}}>{desc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// MAIN APP
-// ============================================================
-
-function App() {
-  const [page, setPage] = useState('dashboard');
-  const toast = useToast();
-  const { data: apps } = useApi('/api/applications/');
-
-  const pendingCount = apps ? apps.filter(a => ['pending_review','ready_to_send'].includes(a.status)).length : 0;
-  const interviewCount = apps ? apps.filter(a => ['interview_proposed'].includes(a.status)).length : 0;
-
-  const NAV = [
-    { key: 'dashboard', icon: '◈', label: 'Dashboard' },
-    { key: 'applications', icon: '📨', label: 'Candidatures', badge: pendingCount || null },
-    { key: 'offers', icon: '🔍', label: 'Offres' },
-  ];
-
-  const TOOLS = [
-    { key: 'settings', icon: '⚙', label: 'Paramètres' },
-  ];
-
-  const pages = {
-    dashboard: <DashboardPage toast={toast} />,
-    applications: <ApplicationsPage toast={toast} />,
-    offers: <OffersPage toast={toast} />,
-    settings: <SettingsPage toast={toast} />,
-  };
-
-  return (
-    <div className="layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <div className="brand">
-            Job<span>Agent</span>
-            <span className="status-dot"></span>
-          </div>
-          <div style={{fontSize:11, color:'var(--text-dim)', marginTop:4, fontFamily:'DM Mono,monospace'}}>v1.0 — MVP</div>
-        </div>
-        <nav className="sidebar-nav">
-          <div className="nav-section-label">Navigation</div>
-          {NAV.map(n => (
-            <div key={n.key} className={`nav-item ${page === n.key ? 'active' : ''}`} onClick={() => setPage(n.key)}>
-              <span className="nav-icon">{n.icon}</span>
-              {n.label}
-              {n.badge ? <span className="nav-badge">{n.badge}</span> : null}
-            </div>
-          ))}
-          <div className="nav-section-label">Système</div>
-          {TOOLS.map(n => (
-            <div key={n.key} className={`nav-item ${page === n.key ? 'active' : ''}`} onClick={() => setPage(n.key)}>
-              <span className="nav-icon">{n.icon}</span>
-              {n.label}
-            </div>
-          ))}
-          {interviewCount > 0 && (
-            <div style={{margin:'16px 0 0', padding:'12px', background:'rgba(104,211,145,0.08)', border:'1px solid rgba(104,211,145,0.2)', borderRadius:10}}>
-              <div style={{fontSize:11, color:'var(--success)', fontWeight:600, marginBottom:4}}>🎯 {interviewCount} entretien(s) proposé(s)</div>
-              <div style={{fontSize:11, color:'var(--text-dim)'}}>Vérifier les brouillons Gmail</div>
             </div>
           )}
-        </nav>
-        <div style={{padding:'0 16px 16px', borderTop:'1px solid var(--border)', marginTop:'auto', paddingTop:16}}>
-          <div style={{fontSize:11, color:'var(--text-dim)', fontFamily:'DM Mono,monospace'}}>API: localhost:8000</div>
         </div>
-      </aside>
+      );
+    }
 
-      <main className="main">
-        {pages[page]}
-      </main>
+    // ── OFFERS ──
+    function OffersPage({ toast }) {
+      const [jobs, setJobs] = useState(null);
+      const [filter, setFilter] = useState('all');
+      const [scoring, setScoring] = useState(false);
+      const [gf, setGf] = useState({});
+      const [df, setDf] = useState({});
 
-      <ToastContainer toasts={toast.toasts} />
-    </div>
-  );
-}
+      const load = () => api('/api/jobs/').then(r => r?.json()).then(d => d && setJobs(d));
+      useEffect(() => { load(); }, []);
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script>
+      const filtered = jobs ? jobs.filter(j => filter === 'all' ? true : j.status === filter) : [];
+
+      const scoreAll = async () => {
+        setScoring(true);
+        try { const r = await api('/api/jobs/score-all', { method: 'POST' }); const d = await r.json(); toast.ok(`${d.scored} offres scorées`); load(); }
+        catch { toast.err('Erreur'); }
+        finally { setScoring(false); }
+      };
+
+      const gen = async id => {
+        setGf(p => ({ ...p, [id]: true }));
+        try { await api(`/api/applications/generate/${id}`, { method: 'POST' }); toast.ok('Candidature générée !'); }
+        catch { toast.err('Erreur'); }
+        finally { setGf(p => ({ ...p, [id]: false })); }
+      };
+
+      // ── NOUVEAU : suppression d'une offre ──
+      const delOffer = async id => {
+        setDf(p => ({ ...p, [id]: true }));
+        try {
+          await api(`/api/jobs/${id}`, { method: 'DELETE' });
+          toast.ok('Offre supprimée');
+          load();
+        } catch { toast.err('Erreur lors de la suppression'); }
+        finally { setDf(p => ({ ...p, [id]: false })); }
+      };
+
+      // ── NOUVEAU : vider toutes les offres ──
+      const delAll = async () => {
+        if (!confirm(`Supprimer toutes les offres ${filter !== 'all' ? `(${filter})` : ''} ?`)) return;
+        try {
+          const url = filter !== 'all' ? `/api/jobs/?status=${filter}` : '/api/jobs/';
+          await api(url, { method: 'DELETE' });
+          toast.ok('Offres supprimées');
+          load();
+        } catch { toast.err('Erreur'); }
+      };
+
+      const FILTERS = [{ k: 'all', l: 'Toutes' }, { k: 'to_review', l: '🔍 À analyser' }, { k: 'shortlisted', l: '⭐ Shortlistées' }, { k: 'ignored', l: '✕ Ignorées' }];
+
+      return (
+        <div>
+          <div className="topbar">
+            <div className="topbar-brand">Offres</div>
+            <button className="btn btn-sec btn-sm" onClick={scoreAll} disabled={scoring}>{scoring ? <span className="spinner"></span> : '⚡'}</button>
+          </div>
+          <div className="page-header">
+            <div><div className="page-title">Offres d'emploi</div><div className="page-sub">{jobs ? `${jobs.length} en base` : ''}</div></div>
+            <div className="hdr-actions">
+              <button className="btn btn-sec btn-sm" onClick={scoreAll} disabled={scoring}>{scoring ? <span className="spinner"></span> : '⚡'} Scorer</button>
+              <button className="btn btn-mint btn-sm" onClick={async () => {
+                toast.info('🔍 Scraping en cours... (30-60 sec)');
+                const r = await api('/api/jobs/scrape', { method: 'POST' });
+                if (!r || !r.ok) { toast.err('Erreur scraping'); return; }
+                let attempts = 0;
+                const poll = setInterval(async () => {
+                  attempts++;
+                  const rj = await api('/api/jobs/');
+                  const jobs = await rj.json();
+                  if (jobs && jobs.length > 0) { clearInterval(poll); toast.ok(`✅ ${jobs.length} offres !`); load(); }
+                  else if (attempts >= 12) { clearInterval(poll); toast.err('⚠ Aucune offre trouvée'); }
+                }, 5000);
+              }}>🔍 Scraper</button>
+              {/* ── NOUVEAU : bouton vider ── */}
+              <button className="btn btn-danger btn-sm" onClick={delAll}>🗑 Vider {filter !== 'all' ? `(${filter})` : 'tout'}</button>
+            </div>
+          </div>
+          <div className="filter-bar">{FILTERS.map(f => <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>{f.l} {jobs ? `(${jobs.filter(j => f.k === 'all' ? true : j.status === f.k).length})` : ''}</button>)}</div>
+          <div className="card">
+            {!jobs ? <div className="loading"><span className="spinner"></span>Chargement...</div> : filtered.length === 0 ? <div className="empty"><div className="empty-ico">🔍</div><div>Lance un scraping</div></div> : filtered.map(j => (
+              <div className="list-item" key={j.id}>
+                <div className="list-item-row"><div className="list-item-title">{j.title}</div><ScoreBar s={j.relevance_score} /></div>
+                <div className="list-item-meta">
+                  <span className="badge b-dim">{j.platform}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{j.location || '—'}</span>
+                  <span className={`badge ${j.status === 'shortlisted' ? 'b-mint' : j.status === 'ignored' ? 'b-danger' : 'b-dim'}`}><span className="bdot"></span>{j.status}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 5, marginTop: 3 }}>
+                  {j.status === 'shortlisted' && <button className="btn btn-mint btn-sm" onClick={() => gen(j.id)} disabled={gf[j.id]}>{gf[j.id] ? <span className="spinner"></span> : '✨'} Candidater</button>}
+                  <a href={j.url} target="_blank" className="btn btn-ghost btn-sm">🔗 Voir</a>
+                  {/* ── NOUVEAU : bouton supprimer par offre ── */}
+                  <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); delOffer(j.id); }} disabled={df[j.id]}>{df[j.id] ? <span className="spinner"></span> : '🗑'}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── PROFILE ──
+    function ProfilePage({ toast, user }) {
+      const [form, setForm] = useState(null);
+      const [saving, setSaving] = useState(false);
+      const [tab, setTab] = useState('info');
+      const [pw, setPw] = useState({ cur: '', nxt: '', cfm: '' });
+      const [pwErr, setPwErr] = useState('');
+      const [pwLoading, setPwLoading] = useState(false);
+      const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+      useEffect(() => { api('/api/profile/').then(r => r?.json()).then(d => { if (d && !d.detail) setForm(d); }); }, []);
+      const save = async () => { setSaving(true); try { const r = await api('/api/profile/', { method: 'PATCH', body: JSON.stringify(form) }); if (r.ok) { toast.ok('Sauvegardé ✓'); } else { const d = await r.json(); toast.err(d.detail || 'Erreur'); } } catch { toast.err('Erreur réseau'); } finally { setSaving(false); } };
+      const changePw = async () => { setPwErr(''); if (pw.nxt !== pw.cfm) { setPwErr('Mots de passe différents'); return; } if (pw.nxt.length < 8) { setPwErr('Min. 8 caractères'); return; } setPwLoading(true); try { const r = await api('/api/auth/change-password', { method: 'POST', body: JSON.stringify({ current_password: pw.cur, new_password: pw.nxt }) }); const d = await r.json(); if (r.ok) { toast.ok('Modifié ✓'); setPw({ cur: '', nxt: '', cfm: '' }); } else setPwErr(d.detail || 'Erreur'); } catch { setPwErr('Erreur réseau'); } finally { setPwLoading(false); } };
+      if (!form) return <div className="loading"><span className="spinner"></span>Chargement...</div>;
+      const initials = ((form.first_name || '')[0] || '') + ((form.last_name || '')[0] || '');
+      const TABS = [{ k: 'info', ico: '👤', l: 'Infos' }, { k: 'skills', ico: '⚡', l: 'Skills' }, { k: 'search', ico: '🎯', l: 'Recherche' }, { k: 'text', ico: '✍️', l: 'Textes' }, { k: 'security', ico: '🔒', l: 'Sécurité' }];
+
+      const profileContent = (
+        <div>
+          {tab === 'info' && <div>
+            <div className="fsec"><div className="fsec-ttl">👤 Identité</div>
+              <div className="form-row"><div className="form-grp"><label className="form-lbl">Prénom</label><input className="form-inp" value={form.first_name || ''} onChange={e => set('first_name', e.target.value)} /></div><div className="form-grp"><label className="form-lbl">Nom</label><input className="form-inp" value={form.last_name || ''} onChange={e => set('last_name', e.target.value)} /></div></div>
+              <div className="form-row"><div className="form-grp"><label className="form-lbl">Téléphone</label><input className="form-inp" value={form.phone || ''} onChange={e => set('phone', e.target.value)} placeholder="+33 6..." /></div><div className="form-grp"><label className="form-lbl">Localisation</label><input className="form-inp" value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder="Paris" /></div></div>
+              <div className="form-grp"><label className="form-lbl">LinkedIn</label><input className="form-inp" value={form.linkedin_url || ''} onChange={e => set('linkedin_url', e.target.value)} placeholder="linkedin.com/in/..." /></div>
+              <div className="form-grp"><label className="form-lbl">GitHub / Portfolio</label><input className="form-inp" value={form.portfolio_url || ''} onChange={e => set('portfolio_url', e.target.value)} placeholder="github.com/..." /></div>
+            </div>
+            <div className="fsec"><div className="fsec-ttl">🎓 Formation</div>
+              <div className="form-row"><div className="form-grp"><label className="form-lbl">Niveau</label><input className="form-inp" value={form.education_level || ''} onChange={e => set('education_level', e.target.value)} placeholder="Master Data Science" /></div><div className="form-grp"><label className="form-lbl">École</label><input className="form-inp" value={form.school || ''} onChange={e => set('school', e.target.value)} placeholder="Paris-Saclay" /></div></div>
+              <div className="form-grp"><label className="form-lbl">Année diplôme</label><input className="form-inp" value={form.graduation_year || ''} onChange={e => set('graduation_year', e.target.value)} placeholder="2026" style={{ maxWidth: 110 }} /></div>
+            </div>
+          </div>}
+          {tab === 'skills' && <div>
+            <div className="fsec"><div className="fsec-ttl">⚡ Tech</div><div className="form-grp"><label className="form-lbl">Compétences techniques</label><TagInput values={form.skills_technical || []} onChange={v => set('skills_technical', v)} placeholder="Python, SQL..." /></div><div className="form-grp" style={{ marginTop: 11 }}><label className="form-lbl">Outils</label><TagInput values={form.tools || []} onChange={v => set('tools', v)} placeholder="Power BI, Tableau..." /></div></div>
+            <div className="fsec"><div className="fsec-ttl">🤝 Soft skills</div><TagInput values={form.skills_soft || []} onChange={v => set('skills_soft', v)} placeholder="Rigueur..." /></div>
+            <div className="fsec"><div className="fsec-ttl">🌍 Langues</div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>Format : "Français - Natif"</div><TagInput values={form.languages?.map(l => typeof l === 'object' ? `${l.lang} - ${l.level}` : l) || []} onChange={v => set('languages', v.map(s => { const p = s.split(' - '); return { lang: p[0], level: p[1] || '' } }))} placeholder="Français - Natif" /></div>
+          </div>}
+          {tab === 'search' && <div>
+            <div className="fsec"><div className="fsec-ttl">🎯 Objectif</div>
+              <div className="form-grp"><label className="form-lbl">Postes visés</label><TagInput values={form.target_roles || []} onChange={v => set('target_roles', v)} placeholder="Data Analyst..." /></div>
+              <div className="form-grp" style={{ marginTop: 11 }}><label className="form-lbl">Localisations</label><TagInput values={form.target_locations || []} onChange={v => set('target_locations', v)} placeholder="Paris, Remote..." /></div>
+              <div className="form-row" style={{ marginTop: 11 }}>
+                <div className="form-grp"><label className="form-lbl">Contrat</label><select className="form-inp" value={form.target_contract || 'stage'} onChange={e => set('target_contract', e.target.value)}><option value="stage">Stage</option><option value="alternance">Alternance</option><option value="cdi">CDI</option><option value="cdd">CDD</option></select></div>
+                <div className="form-grp"><label className="form-lbl">Disponibilité</label><input className="form-inp" value={form.availability_date || ''} onChange={e => set('availability_date', e.target.value)} placeholder="Sept. 2025" /></div>
+              </div>
+            </div>
+          </div>}
+          {tab === 'text' && <div>
+            <div style={{ padding: '9px 12px', background: 'var(--mint-light)', border: '1px solid var(--mint-mid)', borderRadius: 8, marginBottom: 16, fontSize: 12, color: 'var(--mint-dark)' }}>💡 Ces textes guident GPT pour personnaliser chaque candidature.</div>
+            <div className="fsec"><div className="fsec-ttl">✍️ Présentation</div>
+              <div className="form-grp"><label className="form-lbl">Pitch</label><textarea className="form-inp" value={form.pitch || ''} onChange={e => set('pitch', e.target.value)} placeholder="Étudiant en Master Data Science..." /></div>
+              <div className="form-grp"><label className="form-lbl">Points forts</label><textarea className="form-inp" value={form.strengths || ''} onChange={e => set('strengths', e.target.value)} placeholder="Projet Kaggle Top 5%..." /></div>
+              <div className="form-grp"><label className="form-lbl">Motivation</label><textarea className="form-inp" value={form.motivation || ''} onChange={e => set('motivation', e.target.value)} placeholder="Passionné par la data..." /></div>
+            </div>
+          </div>}
+          {tab === 'security' && <div>
+            <div className="fsec"><div className="fsec-ttl">🔒 Changer le mot de passe</div>
+              {pwErr && <div className="auth-err" style={{ marginBottom: 11 }}>⚠ {pwErr}</div>}
+              <div className="form-grp"><label className="form-lbl">Actuel</label><input className="form-inp" type="password" value={pw.cur} onChange={e => setPw(p => ({ ...p, cur: e.target.value }))} /></div>
+              <div className="form-grp"><label className="form-lbl">Nouveau</label><input className="form-inp" type="password" value={pw.nxt} onChange={e => setPw(p => ({ ...p, nxt: e.target.value }))} /></div>
+              <div className="form-grp"><label className="form-lbl">Confirmer</label><input className="form-inp" type="password" value={pw.cfm} onChange={e => setPw(p => ({ ...p, cfm: e.target.value }))} /></div>
+              <button className="btn btn-primary" onClick={changePw} disabled={pwLoading}>{pwLoading ? <span className="spinner"></span> : '🔒'} Modifier</button>
+            </div>
+            <div className="fsec"><div className="fsec-ttl">ℹ️ Protections</div>
+              {[['Chiffrement', 'bcrypt rounds=12'], ['Tokens', 'JWT 7j'], ['Sessions', 'sessionStorage — non partagé']].map(([k, v]) => (<div className="sec-info-row" key={k}><span className="sec-key">{k}</span><span className="sec-val">{v}</span></div>))}
+            </div>
+          </div>}
+        </div>
+      );
+
+      return (
+        <div>
+          <div className="topbar"><div className="topbar-brand">Profil</div>{tab !== 'security' && <button className="btn btn-mint btn-sm" onClick={save} disabled={saving}>{saving ? <span className="spinner"></span> : '💾'}</button>}</div>
+          <div className="page-header">
+            <div><div className="page-title">Mon Profil</div><div className="page-sub">Personnalise tes candidatures</div></div>
+            {tab !== 'security' && <button className="btn btn-mint" onClick={save} disabled={saving}>{saving ? <span className="spinner"></span> : '💾'} Sauvegarder</button>}
+          </div>
+          <div id="profile-mobile">
+            <div className="card" style={{ padding: '18px 14px', textAlign: 'center', marginBottom: 12 }}>
+              <div className="p-avatar">{initials.toUpperCase() || '?'}</div>
+              <div className="p-name">{form.first_name} {form.last_name}</div>
+              <div className="p-email">{user?.email}</div>
+              <div className="p-stats"><div><div className="p-stat-v">{form.skills_technical?.length || 0}</div><div className="p-stat-l">Skills</div></div><div><div className="p-stat-v">{form.target_roles?.length || 0}</div><div className="p-stat-l">Postes</div></div><div><div className="p-stat-v">{form.languages?.length || 0}</div><div className="p-stat-l">Langues</div></div></div>
+            </div>
+            <div className="p-tabs">{TABS.map(t => <button key={t.k} className={`p-tab ${tab === t.k ? 'on' : ''}`} onClick={() => setTab(t.k)}>{t.ico} {t.l}</button>)}</div>
+            <div className="card" style={{ padding: '14px' }}>{profileContent}</div>
+          </div>
+          <div id="profile-desktop" style={{ display: 'none' }}>
+            <div className="p-profile-desktop">
+              <div>
+                <div className="p-side-card">
+                  <div className="p-avatar">{initials.toUpperCase() || '?'}</div>
+                  <div className="p-name">{form.first_name} {form.last_name}</div>
+                  <div className="p-email">{user?.email}</div>
+                  <div className="p-stats"><div><div className="p-stat-v">{form.skills_technical?.length || 0}</div><div className="p-stat-l">Skills</div></div><div><div className="p-stat-v">{form.target_roles?.length || 0}</div><div className="p-stat-l">Postes</div></div><div><div className="p-stat-v">{form.languages?.length || 0}</div><div className="p-stat-l">Langues</div></div></div>
+                </div>
+                <div className="p-nav-desktop">{TABS.map(t => <div key={t.k} className={`p-nav-item ${tab === t.k ? 'on' : ''}`} onClick={() => setTab(t.k)}><span>{t.ico}</span>{t.l}</div>)}</div>
+              </div>
+              <div className="card" style={{ height: 'fit-content' }}><div style={{ padding: '18px' }}>{profileContent}</div></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── APP ──
+    function App() {
+      const [user, setUser] = useState(getUser());
+      const [page, setPage] = useState('dashboard');
+      const [apps, setApps] = useState(null);
+      const [showMenu, setShowMenu] = useState(false);
+      const toast = useToast();
+
+      useEffect(() => { if (user) api('/api/applications/').then(r => r?.json()).then(d => d && setApps(d)); }, [user]);
+
+      if (!user) return <><AuthPage onLogin={u => { setUser(u); setPage('dashboard'); }} /><Toasts items={toast.items} /></>;
+
+      const pendingCount = apps?.filter(a => ['pending_review', 'ready_to_send', 'to_apply', 'follow_up_needed'].includes(a.status)).length || 0;
+      const interviewCount = apps?.filter(a => a.status === 'interview').length || 0;
+      const initials = ((user.full_name || user.email || '?').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase());
+      const NAV = [{ k: 'dashboard', ico: '◈', l: 'Home' }, { k: 'applications', ico: '📨', l: 'Candidats', b: pendingCount || null }, { k: 'offers', ico: '🔍', l: 'Offres' }, { k: 'profile', ico: '👤', l: 'Profil' }];
+      const pages = { dashboard: <DashboardPage toast={toast} user={user} />, applications: <ApplicationsPage toast={toast} />, offers: <OffersPage toast={toast} />, profile: <ProfilePage toast={toast} user={user} /> };
+
+      return (
+        <div className="layout">
+          <aside className="sidebar-desktop" id="sidebar">
+            <div className="sb-brand"><div className="sb-logo">Job<span>Agent</span></div><div className="sb-version">v1.0 — MVP</div></div>
+            <div className="sb-user"><div className="sb-avatar">{initials}</div><div><div className="sb-uname">{user.full_name || 'Utilisateur'}</div><div className="sb-uemail">{user.email}</div></div></div>
+            <nav className="sb-nav">
+              <div className="sb-section">Navigation</div>
+              {NAV.map(n => (
+                <div key={n.k} className={`nav-item ${page === n.k ? 'active' : ''}`} onClick={() => setPage(n.k)}>
+                  <span className="nav-icon">{n.ico}</span>{n.l}
+                  {n.b ? <span className="nav-badge">{n.b}</span> : null}
+                </div>
+              ))}
+              {interviewCount > 0 && <div style={{ background: 'rgba(45,184,122,0.1)', border: '1px solid rgba(45,184,122,0.2)', borderRadius: 8, padding: '9px 11px', margin: '11px 2px 0' }}><div style={{ fontSize: 11.5, color: 'var(--mint)', fontWeight: 600, marginBottom: 1 }}>🎯 {interviewCount} entretien(s)</div><div style={{ fontSize: 10.5, color: 'rgba(45,184,122,0.6)' }}>Félicitations !</div></div>}
+            </nav>
+            <div className="sb-bottom"><button className="btn-logout" onClick={() => { clearAuth(); setUser(null); }}>↩ Se déconnecter</button></div>
+          </aside>
+
+          <main className="main">{pages[page] || pages.dashboard}</main>
+
+          <nav className="bottom-nav">
+            {NAV.map(n => (
+              <button key={n.k} className={`bn-item ${page === n.k ? 'active' : ''}`} onClick={() => setPage(n.k)}>
+                {n.b ? <span className="bn-badge">{n.b}</span> : null}
+                <span className="bn-ico">{n.ico}</span>
+                <span className="bn-lbl">{n.l}</span>
+              </button>
+            ))}
+            <button className="bn-item" onClick={() => setShowMenu(true)}>
+              <span className="bn-ico" style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--mint)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'Syne,sans-serif', fontWeight: 700, fontSize: 10 }}>{initials}</span>
+              <span className="bn-lbl">Moi</span>
+            </button>
+          </nav>
+
+          {showMenu && (
+            <div className="modal-ov" onClick={() => setShowMenu(false)}>
+              <div className="user-menu" onClick={e => e.stopPropagation()}>
+                <div className="modal-handle"></div>
+                <div className="p-avatar" style={{ margin: '0 auto 9px' }}>{initials}</div>
+                <div className="user-menu-name">{user.full_name || 'Utilisateur'}</div>
+                <div className="user-menu-email">{user.email}</div>
+                <div className="user-menu-item" onClick={() => { setPage('profile'); setShowMenu(false); }}><span>👤</span>Mon profil</div>
+                <div className="user-menu-item" style={{ color: 'var(--danger)' }} onClick={() => { clearAuth(); setUser(null); }}><span>↩</span>Se déconnecter</div>
+              </div>
+            </div>
+          )}
+
+          <Toasts items={toast.items} />
+
+          <style>{`
+            @media(min-width:640px){
+              #sidebar{display:flex !important;}
+              #profile-mobile{display:none !important;}
+              #profile-desktop{display:block !important;}
+            }
+            @media(max-width:639px){
+              #sidebar{display:none !important;}
+              #profile-desktop{display:none !important;}
+              #profile-mobile{display:block !important;}
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
 </body>
 </html>
