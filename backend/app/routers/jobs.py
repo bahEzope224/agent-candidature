@@ -6,6 +6,9 @@ from app.database import get_db
 from app.services.scraper.wttj import scrape_all_queries
 from app.services.job_service import save_many_offers
 from app.services.scorer import score_offer, get_action, profile_to_scorer_dict
+from app.models.user import User
+from app.services.auth_service import get_current_user 
+from app.models.profile import Profile
 from app.models.job_offer import JobOffer
 import structlog
 import uuid
@@ -60,11 +63,14 @@ async def list_offers(
 @router.post("/score-all")
 async def score_all_pending(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+
 ):
     result = await db.execute(
         select(JobOffer)
         .options(selectinload(JobOffer.company))
         .where(JobOffer.status == "to_review")
+        
         .limit(10)
     )
     offers = result.scalars().all()
