@@ -1,3 +1,4 @@
+from __future__ import annotations
 import uuid
 from datetime import datetime
 from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean, Float
@@ -23,15 +24,22 @@ class Application(Base):
     email_body: Mapped[str] = mapped_column(Text, nullable=True)
     cover_letter_text: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # Statut (cycle de vie complet)
-    status: Mapped[str] = mapped_column(String(100), default="draft")
-    # draft | pending_review | sent | follow_up_scheduled |
-    # follow_up_sent | response_received | interview_proposed |
-    # interview_confirmed | refused | hired | archived
+    # Statut (cycle de vie manuel)
+    status: Mapped[str] = mapped_column(String(100), default="to_apply")
+    # to_apply         → lettre générée, en attente de candidature manuelle
+    # sent             → l'utilisateur confirme avoir candidaté
+    # follow_up_needed → J+7 après "sent" → relance à envoyer
+    # follow_up_sent   → l'utilisateur confirme avoir relancé
+    # no_response      → J+7 après "follow_up_sent"
+    # interview        → entretien obtenu (manuel)
+    # refused          → refus (manuel)
+    # archived         → archivé
 
-    # Métadonnées d'envoi
+    # Métadonnées d'envoi (renseignées manuellement)
     sent_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     followup_sent_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    followup_generated_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    followup_email_body: Mapped[str] = mapped_column(Text, nullable=True)
     send_attempts: Mapped[int] = mapped_column(Integer, default=0)
 
     # LLM
