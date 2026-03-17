@@ -84,7 +84,7 @@ def _parse_adzuna(job: dict) -> Optional[RawJobOffer]:
         posted_at = None
         if created:
             try:
-                posted_at = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                posted_at = datetime.fromisoformat(created.replace("Z", "+00:00")).replace(tzinfo=None)
             except Exception:
                 posted_at = datetime.utcnow()
         return RawJobOffer(
