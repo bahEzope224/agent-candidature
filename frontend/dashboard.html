@@ -385,7 +385,7 @@
               <div className="auth-title">{mode === 'login' ? 'Connexion' : 'Créer un compte'}</div>
               <div className="auth-sub">{mode === 'login' ? 'Accède à ton dashboard' : 'Configure ton agent'}</div>
               {err && <div className="auth-err">⚠ {err}</div>}
-              {mode === 'register' && <div className="form-grp"><label className="form-lbl">Prénom & Nom</label><input className="form-inp" placeholder="Ibrahim Bah" value={form.full_name} onChange={e => set('full_name', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} /></div>}
+              {mode === 'register' && <div className="form-grp"><label className="form-lbl">Prénom & Nom</label><input className="form-inp" placeholder="Nom Prenom" value={form.full_name} onChange={e => set('full_name', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} /></div>}
               <div className="form-grp"><label className="form-lbl">Email</label><input className="form-inp" type="email" placeholder="ton@email.com" value={form.email} onChange={e => set('email', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} /></div>
               <div className="form-grp"><label className="form-lbl">Mot de passe</label><input className="form-inp" type="password" placeholder={mode === 'register' ? 'Min. 8 cars, 1 maj, 1 chiffre' : '••••••••'} value={form.password} onChange={e => set('password', e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
                 {mode === 'register' && <div className="pw-hint">Min. 8 caractères · 1 majuscule · 1 chiffre</div>}</div>
