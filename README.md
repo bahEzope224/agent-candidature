@@ -1,6 +1,6 @@
 # 🤖 Job Agent IA — Recherche & Suivi de Stage Data
 
-Agent IA autonome pour automatiser la recherche de stage en Data Analyst / Data Scientist, la génération de candidatures personnalisées, le suivi CRM et les relances automatiques.
+Agent IA automatisé pour la recherche et le suivi de candidatures à des emplois en général (CDD, CDI, stages ou alternances), adaptable à n'importe quel poste en fonction du profil utilisateur. La génération de candidatures personnalisées, le suivi CRM et les relances automatiques.
 
 ---
 
