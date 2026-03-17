@@ -465,6 +465,13 @@
       useEffect(() => { load(); }, []);
       const filtered = apps ? apps.filter(a => filter === 'all' ? true : filter === 'pending' ? ['to_apply', 'follow_up_needed'].includes(a.status) : filter === 'sent' ? a.status === 'sent' : filter === 'interview' ? ['interview', 'interview_proposed'].includes(a.status) : filter === 'followup' ? ['follow_up_sent', 'follow_up_needed'].includes(a.status) : filter === 'no_response' ? a.status === 'no_response' : a.status === 'refused') : [];
       const loadDet = async id => { const r = await api(`/api/applications/${id}`); const d = await r.json(); setSel(d); };
+      const confirmAction = async (id, action, msg, reload) => {
+        try {
+          await api(`/api/applications/${id}/${action}`, { method: 'PATCH' });
+          toast.ok(msg);
+          reload();
+        } catch { toast.err('Erreur'); }
+      };
       const genBatch = async () => { setGen(true); try { const r = await api('/api/applications/generate-batch?limit=5', { method: 'POST' }); const d = await r.json(); toast.ok(`${d.generated} candidature(s)`); load(); } catch { toast.err('Erreur'); } finally { setGen(false); } };
       const FILTERS = [{ k: 'all', l: 'Toutes' }, { k: 'pending', l: '📋 À candidater' }, { k: 'sent', l: '📨 Envoyées' }, { k: 'followup', l: '🔁 À relancer' }, { k: 'no_response', l: '😶 Sans réponse' }, { k: 'interview', l: '🎯 Entretiens' }, { k: 'refused', l: '✕ Refus' }];
       return (
@@ -480,12 +487,30 @@
           <div className="filter-bar">{FILTERS.map(f => <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>{f.l}</button>)}</div>
           <div className="card">
             {!apps ? <div className="loading"><span className="spinner"></span>Chargement...</div> : filtered.length === 0 ? <div className="empty"><div className="empty-ico">📭</div><div>Aucune candidature</div></div> : filtered.map(a => (
-              <div className="list-item" key={a.id} onClick={() => loadDet(a.id)}>
-                <div className="list-item-row"><div className="list-item-title">{a.offer}</div><SBadge s={a.status} /></div>
+              <div className="list-item" key={a.id}>
+                <div className="list-item-row" onClick={() => loadDet(a.id)} style={{cursor:'pointer'}}>
+                  <div className="list-item-title">{a.offer}</div>
+                  <SBadge s={a.status} />
+                </div>
                 <div className="list-item-meta">
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{a.company}</span>
                   {a.confidence && <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10.5, color: a.confidence >= 0.85 ? 'var(--mint-dark)' : 'var(--warn)' }}>{Math.round(a.confidence * 100)}%</span>}
                   <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text-dim)' }}>{new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
+                </div>
+                {/* Boutons d'action rapide selon le statut */}
+                <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+                  {a.status === 'to_apply' && <>
+                    <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-sent', 'Envoyé ✓', load)}>✅ Envoyé</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir mail</button>
+                  </>}
+                  {a.status === 'follow_up_needed' && <>
+                    <button className="btn btn-sec btn-sm" onClick={() => confirmAction(a.id, 'confirm-followup-sent', 'Relance confirmée ✓', load)}>🔁 J'ai relancé</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir relance</button>
+                  </>}
+                  {['sent', 'follow_up_sent', 'follow_up_needed', 'no_response'].includes(a.status) && <>
+                    <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-interview', '🎯 Entretien enregistré !', load)}>🎯 Entretien</button>
+                    <button className="btn btn-sm" style={{background:'var(--danger-light)',color:'var(--danger)',border:'1px solid rgba(192,57,43,0.2)'}} onClick={() => confirmAction(a.id, 'confirm-refused', 'Refus enregistré', load)}>✕ Refus</button>
+                  </>}
                 </div>
               </div>
             ))}
