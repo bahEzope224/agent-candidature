@@ -50,6 +50,18 @@ async def list_offers(
         query = query.where(JobOffer.status == status)
     result = await db.execute(query)
     offers = result.scalars().all()
+    return [
+        {
+            "id": str(o.id),
+            "title": o.title,
+            "location": o.location,
+            "platform": o.source_platform,
+            "status": o.status,
+            "relevance_score": o.relevance_score,
+            "url": o.source_url,
+        }
+        for o in offers
+    ]
 
 
 @router.post("/score-all")
