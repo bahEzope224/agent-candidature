@@ -1,10 +1,6 @@
 """
 Scraper basé sur l'API Adzuna
--------------------------------
-Adzuna est une API gratuite (inscription requise sur developer.adzuna.com)
-Variables d'environnement requises :
-  ADZUNA_APP_ID  
-  ADZUNA_APP_KEY 
+Variables d'environnement requises : ADZUNA_APP_ID, ADZUNA_APP_KEY
 """
 import asyncio
 import random
@@ -17,12 +13,14 @@ import structlog
 
 logger = structlog.get_logger()
 
-CONTRACT_MAP = {
-    "stage": "internship",
-    "alternance": "contract",
-    "cdi": "permanent",
-    "cdd": "contract",
-}
+# Requêtes par défaut si aucun profil n'est fourni
+DEFAULT_QUERIES = [
+    "Data Analyst",
+    "Data Scientist",
+    "Business Intelligence Analyst",
+    "Analyste données",
+]
+
 
 async def scrape_adzuna(
     query: str,
@@ -60,7 +58,7 @@ async def scrape_adzuna(
                 if not results:
                     break
                 for job in results:
-                    offer = _parse_adzuna(job)
+                    offer = _parse_adzuna(job, contract)
                     if offer:
                         offers.append(offer)
                 logger.info("Offres Adzuna", count=len(results), page=page)
@@ -71,7 +69,7 @@ async def scrape_adzuna(
     return offers
 
 
-def _parse_adzuna(job: dict) -> Optional[RawJobOffer]:
+def _parse_adzuna(job: dict, contract: str = "stage") -> Optional[RawJobOffer]:
     try:
         title = job.get("title", "").strip()
         company = job.get("company", {}).get("display_name", "Inconnu").strip()
@@ -94,7 +92,7 @@ def _parse_adzuna(job: dict) -> Optional[RawJobOffer]:
             description=description,
             source_url=url,
             source_platform="adzuna",
-            contract_type="stage",
+            contract_type=contract,
             posted_at=posted_at or datetime.utcnow(),
         )
     except Exception as e:
@@ -118,24 +116,27 @@ async def scrape_all_queries(
     contract: str = "stage",
     max_pages: int = 2,
 ) -> list[RawJobOffer]:
-    if queries is None:
-        queries = ["Data Analyst"]
-    if locations is None:
-        locations = ["Paris"]
+    # Utilise les requêtes du profil ou les requêtes par défaut
+    active_queries = queries if queries else DEFAULT_QUERIES
+    active_locations = locations if locations else ["Paris"]
 
     all_offers = []
     seen_hashes = set()
 
-    for query in queries:
-        full_query = f"{contract} {query}" if contract not in query.lower() else query
-        for location in locations:
+    for query in active_queries:
+        # Ajoute le type de contrat dans la requête s'il n'y est pas déjà
+        full_query = f"{query} {contract}" if contract.lower() not in query.lower() else query
+        for location in active_locations:
             logger.info("Scraping requête", query=full_query, location=location)
-            offers = await scrape_adzuna(full_query, location, contract, max_pages)
-            for offer in offers:
-                h = offer.compute_hash()
-                if h not in seen_hashes:
-                    seen_hashes.add(h)
-                    all_offers.append(offer)
+            try:
+                offers = await scrape_adzuna(full_query, location, contract, max_pages)
+                for offer in offers:
+                    h = offer.compute_hash()
+                    if h not in seen_hashes:
+                        seen_hashes.add(h)
+                        all_offers.append(offer)
+            except Exception as e:
+                logger.error("Erreur scraping", query=full_query, error=str(e))
             await asyncio.sleep(random.uniform(1, 2))
 
     logger.info("Scraping terminé", total=len(all_offers))

@@ -22,16 +22,39 @@ async def trigger_scrape(
     background_tasks: BackgroundTasks,
     locations: list[str] = ["Paris"],
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),  # ← ajouté
+    current_user: User = Depends(get_current_user),
 ):
+    # Charge le profil pour personnaliser les requêtes
+    profile_result = await db.execute(
+        select(Profile).where(Profile.user_id == current_user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+
+    # Construit les requêtes depuis le profil
+    queries = []
+    if profile and profile.target_roles:
+        for role in profile.target_roles:
+            contract = profile.target_contract or "stage"
+            queries.append(f"{role} {contract}")
+    
+    locs = []
+    if profile and profile.target_locations:
+        locs = profile.target_locations
+    if not locs:
+        locs = locations
+
     async def run_scrape():
-        logger.info("Démarrage du scraping", locations=locations)
-        raw_offers = await scrape_all_queries(locations=locations, max_pages=2)
-        stats = await save_many_offers(db, raw_offers, current_user.id)  # ← user_id passé
+        logger.info("Démarrage du scraping", locations=locs, queries=queries)
+        raw_offers = await scrape_all_queries(
+            locations=locs, 
+            max_pages=2,
+            queries=queries if queries else None
+        )
+        stats = await save_many_offers(db, raw_offers, current_user.id)
         logger.info("Scraping terminé", **stats)
+
     background_tasks.add_task(run_scrape)
     return {"message": "Scraping démarré en arrière-plan"}
-
 
 @router.get("/")
 async def list_offers(
