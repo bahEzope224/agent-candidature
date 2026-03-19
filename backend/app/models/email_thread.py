@@ -4,6 +4,7 @@ from sqlalchemy import String, Text, DateTime, ForeignKey, Boolean, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
+from app.models.application import Application
 
 class EmailThread(Base):
     __tablename__ = "email_threads"

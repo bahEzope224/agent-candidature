@@ -3,6 +3,8 @@ from datetime import datetime
 from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
+from app.models.user import User
+from app.models.application import Application
 from app.database import Base
 
 class Company(Base):
@@ -40,7 +42,7 @@ class JobOffer(Base):
     required_skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=[])
     nice_to_have_skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=[])
     location: Mapped[str] = mapped_column(String(255), nullable=True)
-    contract_type: Mapped[str] = mapped_column(String(50), default="stage")
+    contract_type: Mapped[str] = mapped_column(String(50), default=[])
     duration_months: Mapped[int] = mapped_column(Integer, nullable=True)
 
     # Source
