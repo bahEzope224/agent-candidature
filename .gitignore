@@ -3,6 +3,7 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+backend/.venv
 
 backend/gmail_credentials.json
 .envbackend/gmail_credentials.json
