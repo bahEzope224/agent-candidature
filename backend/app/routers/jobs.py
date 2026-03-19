@@ -134,7 +134,10 @@ async def delete_offer(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Supprime une offre de l'utilisateur connecté"""
+    from sqlalchemy import delete as sql_delete
+    from app.models.application import Application
+
+    # Vérifie que l'offre appartient à l'user
     result = await db.execute(
         select(JobOffer).where(
             JobOffer.id == offer_id,
@@ -144,6 +147,12 @@ async def delete_offer(
     offer = result.scalar_one_or_none()
     if not offer:
         raise HTTPException(status_code=404, detail="Offre non trouvée")
+
+    # Supprime les candidatures liées d'abord
+    await db.execute(
+        sql_delete(Application).where(Application.job_offer_id == offer_id)
+    )
+
     await db.delete(offer)
     await db.commit()
     return {"message": "Offre supprimée"}
@@ -151,18 +160,30 @@ async def delete_offer(
 
 @router.delete("/")
 async def delete_all_offers(
-    status: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Supprime toutes les offres de l'utilisateur connecté.
-    Optionnel : filtrer par statut (ex: ?status=ignored)
-    """
     from sqlalchemy import delete as sql_delete
-    query = sql_delete(JobOffer).where(JobOffer.user_id == current_user.id)
-    if status:
-        query = query.where(JobOffer.status == status)
-    result = await db.execute(query)
+    from app.models.application import Application
+
+    # 1. Récupère les IDs des offres de cet user
+    result = await db.execute(
+        select(JobOffer.id).where(JobOffer.user_id == current_user.id)
+    )
+    offer_ids = [row[0] for row in result.fetchall()]
+
+    if not offer_ids:
+        return {"message": "Aucune offre à supprimer", "deleted": 0}
+
+    # 2. Supprime les candidatures liées
+    await db.execute(
+        sql_delete(Application).where(Application.job_offer_id.in_(offer_ids))
+    )
+
+    # 3. Supprime les offres
+    await db.execute(
+        sql_delete(JobOffer).where(JobOffer.user_id == current_user.id)
+    )
+
     await db.commit()
-    return {"message": f"{result.rowcount} offre(s) supprimée(s)"}
+    return {"message": f"{len(offer_ids)} offres supprimées", "deleted": len(offer_ids)}
