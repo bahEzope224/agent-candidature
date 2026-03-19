@@ -31,12 +31,13 @@ async def trigger_scrape(
     profile = profile_result.scalar_one_or_none()
 
     # Construit les requêtes depuis le profil
+    contract = profile.target_contract or "stage" if profile else "stage"
     queries = []
     if profile and profile.target_roles:
+        queries = list(profile.target_roles) 
         for role in profile.target_roles:
-            contract = profile.target_contract or "stage"
             queries.append(f"{role} {contract}")
-    
+        
     locs = []
     if profile and profile.target_locations:
         locs = profile.target_locations
@@ -46,10 +47,11 @@ async def trigger_scrape(
     async def run_scrape():
         logger.info("Démarrage du scraping", locations=locs, queries=queries)
         raw_offers = await scrape_all_queries(
-            locations=locs, 
-            max_pages=2,
-            queries=queries if queries else None
-        )
+        locations=locs,
+        max_pages=2,
+        queries=queries if queries else None,
+        contract=contract,  # ← passe le vrai contrat du profil
+    )
         stats = await save_many_offers(db, raw_offers, current_user.id)
         logger.info("Scraping terminé", **stats)
 
