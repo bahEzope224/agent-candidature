@@ -22,13 +22,13 @@ async def trigger_scrape(
     background_tasks: BackgroundTasks,
     locations: list[str] = ["Paris"],
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # ← ajouté
 ):
     async def run_scrape():
         logger.info("Démarrage du scraping", locations=locations)
         raw_offers = await scrape_all_queries(locations=locations, max_pages=2)
-        stats = await save_many_offers(db, raw_offers)
+        stats = await save_many_offers(db, raw_offers, current_user.id)  # ← user_id passé
         logger.info("Scraping terminé", **stats)
-
     background_tasks.add_task(run_scrape)
     return {"message": "Scraping démarré en arrière-plan"}
 
@@ -38,26 +38,18 @@ async def list_offers(
     status: str = None,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),  # ← ajouté
 ):
-    query = select(JobOffer).limit(limit).order_by(JobOffer.scraped_at.desc())
+    query = (
+        select(JobOffer)
+        .where(JobOffer.user_id == current_user.id)  # ← filtre par user
+        .limit(limit)
+        .order_by(JobOffer.scraped_at.desc())
+    )
     if status:
         query = query.where(JobOffer.status == status)
-
     result = await db.execute(query)
     offers = result.scalars().all()
-
-    return [
-        {
-            "id": str(o.id),
-            "title": o.title,
-            "location": o.location,
-            "platform": o.source_platform,
-            "status": o.status,
-            "relevance_score": o.relevance_score,
-            "url": o.source_url,
-        }
-        for o in offers
-    ]
 
 
 @router.post("/score-all")
@@ -70,7 +62,7 @@ async def score_all_pending(
         select(JobOffer)
         .options(selectinload(JobOffer.company))
         .where(JobOffer.status == "to_review")
-        
+        .where(JobOffer.user_id == current_user.id)        
         .limit(10)
     )
     offers = result.scalars().all()
