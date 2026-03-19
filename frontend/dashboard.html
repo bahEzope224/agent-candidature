@@ -627,7 +627,8 @@
       const delOffer = async id => {
         setDf(p => ({ ...p, [id]: true }));
         try {
-          await api(`/api/jobs/${id}`, { method: 'DELETE' });
+          const params = filter !== 'all' ? `?status=${filter}` : ''
+          api(`/api/jobs/${params}`, {method:'DELETE'})          
           toast.ok('Offre supprimée');
           load();
         } catch { toast.err('Erreur lors de la suppression'); }

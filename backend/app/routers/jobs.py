@@ -197,30 +197,29 @@ async def delete_offer(
 
 @router.delete("/")
 async def delete_all_offers(
+    status: str = None,  # ← nouveau paramètre optionnel
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     from sqlalchemy import delete as sql_delete
     from app.models.application import Application
 
-    # 1. Récupère les IDs des offres de cet user
-    result = await db.execute(
-        select(JobOffer.id).where(JobOffer.user_id == current_user.id)
-    )
+    # Filtre par statut si fourni
+    query = select(JobOffer.id).where(JobOffer.user_id == current_user.id)
+    if status:
+        query = query.where(JobOffer.status == status)
+
+    result = await db.execute(query)
     offer_ids = [row[0] for row in result.fetchall()]
 
     if not offer_ids:
         return {"message": "Aucune offre à supprimer", "deleted": 0}
 
-    # 2. Supprime les candidatures liées
     await db.execute(
         sql_delete(Application).where(Application.job_offer_id.in_(offer_ids))
     )
-
-    # 3. Supprime les offres
     await db.execute(
-        sql_delete(JobOffer).where(JobOffer.user_id == current_user.id)
+        sql_delete(JobOffer).where(JobOffer.id.in_(offer_ids))
     )
-
     await db.commit()
     return {"message": f"{len(offer_ids)} offres supprimées", "deleted": len(offer_ids)}
