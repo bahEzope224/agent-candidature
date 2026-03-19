@@ -5,9 +5,11 @@ from sqlalchemy import String, DateTime, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
-from app.models.application import Application
-from app.models.job_offer import JobOffer
-from app.models.profile import Profile
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.application import Application
+    from app.models.job_offer import JobOffer
+    from app.models.profile import Profile
 
 
 class User(Base):

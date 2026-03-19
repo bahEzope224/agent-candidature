@@ -5,10 +5,12 @@ from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, Boolean, Flo
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from app.database import Base
-from app.models.user import User
-from app.models.job_offer import JobOffer
-from app.models.email_thread import EmailThread
-from app.tasks.followups import Followup
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.job_offer import JobOffer
+    from app.models.email_thread import EmailThread
+    from app.tasks.followups import Followup
 
 class Application(Base):
     __tablename__ = "applications"
