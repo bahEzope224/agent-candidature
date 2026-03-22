@@ -1457,6 +1457,13 @@
 
 <body>
   <div id="root"></div>
+  <footer>
+    <div style="text-align:center;padding:20px;font-size:11px;color:#a89478;font-family:'DM Mono',monospace;border-top:1px solid rgba(160,140,110,0.2);margin-top:40px;">
+      <a href="https://job-agent-ibrahima.netlify.app/privacy.html" style="color:#a89478;margin:0 8px;">Confidentialité</a>·
+      <a href="https://job-agent-ibrahima.netlify.app/terms.html" style="color:#a89478;margin:0 8px;">CGU</a>·
+      <a href="https://job-agent-ibrahima.netlify.app/legal.html" style="color:#a89478;margin:0 8px;">Mentions légales</a>
+    </div>
+  </footer>
   <script type="text/babel">
     const { useState, useEffect } = React;
     const API = 'https://agent-job-1.onrender.com';
@@ -2016,7 +2023,10 @@
               ))}
               {interviewCount > 0 && <div style={{ background: 'rgba(45,184,122,0.1)', border: '1px solid rgba(45,184,122,0.2)', borderRadius: 8, padding: '9px 11px', margin: '11px 2px 0' }}><div style={{ fontSize: 11.5, color: 'var(--mint)', fontWeight: 600, marginBottom: 1 }}>🎯 {interviewCount} entretien(s)</div><div style={{ fontSize: 10.5, color: 'rgba(45,184,122,0.6)' }}>Félicitations !</div></div>}
             </nav>
-            <div className="sb-bottom"><button className="btn-logout" onClick={() => { clearAuth(); setUser(null); }}>↩ Se déconnecter</button></div>
+
+            <div className="sb-bottom">
+              <a href="https://jobagent-review.netlify.app" target="_blank" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '8px', background: 'rgba(45,184,122,0.08)', border: '1px solid rgba(45,184,122,0.2)', borderRadius: '7px', color: 'var(--mint)', fontSize: '11.5px', textDecoration: 'none', fontFamily: 'DM Sans,sans-serif', marginBottom: '6px' }}>💬 Donner mon avis</a>
+              <button className="btn-logout" onClick={() => { clearAuth(); setUser(null); }}>↩ Se déconnecter</button></div>
           </aside>
 
           <main className="main">{pages[page] || pages.dashboard}</main>
@@ -2043,7 +2053,7 @@
                 <div className="user-menu-name">{user.full_name || 'Utilisateur'}</div>
                 <div className="user-menu-email">{user.email}</div>
                 <div className="user-menu-item" onClick={() => { setPage('profile'); setShowMenu(false); }}><span>👤</span>Mon profil</div>
-                <a href="https://jobagent-review.netlify.app" target="_blank" className="user-menu-item" style={{color:'var(--mint-dark)',textDecoration:'none'}}><span>💬</span>Donner mon avis</a>
+                <a href="https://jobagent-review.netlify.app" target="_blank" className="user-menu-item" style={{ color: 'var(--mint-dark)', textDecoration: 'none' }}><span>💬</span>Donner mon avis</a>
                 <div className="user-menu-item" style={{ color: 'var(--danger)' }} onClick={() => { clearAuth(); setUser(null); }}><span>↩</span>Se déconnecter</div>
               </div>
             </div>

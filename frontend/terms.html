@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conditions d'utilisation — JobAgent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4ede0;--surface:#fdf8f0;--surface2:#ede5d6;--border:rgba(160,140,110,0.2);--border-strong:rgba(160,140,110,0.4);--mint:#2db87a;--mint-light:#e8f7f0;--mint-dark:#1e9a63;--warn:#d4842a;--warn-light:#fdf3e7;--cream-dark:#8b7355;--text:#1e1a14;--text-muted:#6b5c42;--text-dim:#a89478;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;line-height:1.7;}
+.topbar{background:var(--text);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.brand{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--bg);letter-spacing:-0.5px;text-decoration:none;}
+.brand span{color:var(--mint);}
+.back-link{color:rgba(255,255,255,0.45);font-size:12px;text-decoration:none;display:flex;align-items:center;gap:5px;transition:color 0.15s;}
+.back-link:hover{color:rgba(255,255,255,0.9);}
+.container{max-width:720px;margin:0 auto;padding:40px 20px 80px;}
+.doc-header{margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid var(--border-strong);}
+.doc-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--warn-light);border:1px solid rgba(212,132,42,0.3);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;color:var(--warn);margin-bottom:14px;letter-spacing:0.3px;}
+.doc-title{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:8px;}
+.doc-meta{font-size:12px;color:var(--text-dim);font-family:'DM Mono',monospace;}
+.section{margin-bottom:32px;}
+.section h2{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);color:var(--text);}
+.section p{font-size:13.5px;color:var(--text-muted);margin-bottom:10px;font-weight:300;}
+.section ul{padding-left:18px;margin-bottom:10px;}
+.section ul li{font-size:13.5px;color:var(--text-muted);margin-bottom:5px;font-weight:300;}
+.section a{color:var(--mint-dark);text-decoration:none;}
+.section a:hover{text-decoration:underline;}
+.highlight-box{background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+.highlight-box p{margin:0;font-size:13px;}
+.warn-box{background:var(--warn-light);border:1px solid rgba(212,132,42,0.3);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+.warn-box p{margin:0;font-size:13px;color:var(--warn);}
+.contact-card{background:var(--text);border-radius:10px;padding:20px;margin-top:24px;}
+.contact-card .label{font-size:10px;color:rgba(244,237,224,0.4);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.contact-card .value{font-size:13.5px;color:var(--bg);font-weight:500;}
+.contact-card .value a{color:var(--mint);}
+.footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;}
+.footer a{font-size:12px;color:var(--text-dim);text-decoration:none;font-family:'DM Mono',monospace;}
+.footer a:hover{color:var(--mint-dark);}
+.footer a.active{color:var(--mint-dark);font-weight:500;}
+@media(min-width:640px){.container{padding:52px 32px 100px;}.doc-title{font-size:34px;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="https://job-agent-ibrahima.netlify.app" class="back-link">← Retour au dashboard</a>
+  <a href="https://job-agent-ibrahima.netlify.app" class="brand">Job<span>Agent</span></a>
+  <span style="width:120px"></span>
+</div>
+
+<div class="container">
+  <div class="doc-header">
+    <div class="doc-badge">📋 CGU</div>
+    <div class="doc-title">Conditions d'utilisation</div>
+    <div class="doc-meta">Dernière mise à jour : mars 2025 · Version bêta</div>
+  </div>
+
+  <div class="warn-box">
+    <p>⚠️ <strong>Version bêta :</strong> JobAgent est actuellement en phase bêta gratuite. Certaines fonctionnalités peuvent être limitées ou modifiées. L'utilisation du service implique l'acceptation des présentes conditions.</p>
+  </div>
+
+  <div class="section">
+    <h2>1. Présentation du service</h2>
+    <p>JobAgent est un service d'aide à la recherche d'emploi développé par <strong>Nomad Developer</strong> (auto-entrepreneur, France). Il propose :</p>
+    <ul>
+      <li>Le scraping automatique d'offres d'emploi depuis des sources publiques (Adzuna, etc.)</li>
+      <li>Le scoring d'offres par intelligence artificielle (GPT-4o-mini)</li>
+      <li>La génération automatique de candidatures personnalisées (emails, lettres de motivation)</li>
+      <li>Le suivi des candidatures et des relances</li>
+    </ul>
+    <p>Le service est accessible via <a href="https://job-agent-ibrahima.netlify.app">job-agent-ibrahima.netlify.app</a>.</p>
+  </div>
+
+  <div class="section">
+    <h2>2. Accès au service</h2>
+    <p>L'accès à JobAgent nécessite la création d'un compte avec une adresse email valide. La bêta est actuellement <strong>gratuite et sur invitation</strong>.</p>
+    <p>Vous devez avoir au moins 18 ans pour utiliser ce service. En créant un compte, vous certifiez disposer de la capacité juridique pour accepter ces conditions.</p>
+  </div>
+
+  <div class="section">
+    <h2>3. Obligations de l'utilisateur</h2>
+    <p>En utilisant JobAgent, vous vous engagez à :</p>
+    <ul>
+      <li>Fournir des informations exactes et sincères dans votre profil</li>
+      <li>Ne pas utiliser le service à des fins frauduleuses ou trompeuses</li>
+      <li>Ne pas tenter de contourner les mécanismes de sécurité du service</li>
+      <li>Ne pas automatiser l'utilisation du service au-delà de son usage prévu</li>
+      <li>Respecter les droits des tiers (employeurs, plateformes d'emploi)</li>
+      <li>Ne pas soumettre de données personnelles de tiers sans leur consentement</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>4. Contenu généré par l'IA</h2>
+    <p>Les candidatures, emails et lettres de motivation générés par JobAgent sont produits par une intelligence artificielle (OpenAI GPT-4o-mini). À ce titre :</p>
+    <ul>
+      <li>Le contenu généré est fourni à titre indicatif et doit être <strong>relu et validé</strong> par l'utilisateur avant envoi</li>
+      <li>JobAgent ne garantit pas l'exactitude, la pertinence ou l'efficacité du contenu généré</li>
+      <li>L'utilisateur reste seul responsable des candidatures qu'il envoie</li>
+      <li>JobAgent n'assume aucune responsabilité quant aux réponses obtenues ou non obtenues</li>
+    </ul>
+    <div class="highlight-box">
+      <p>💡 Le mode manuel de JobAgent permet de copier-coller les candidatures générées. Vous conservez le contrôle total sur ce que vous envoyez.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>5. Propriété intellectuelle</h2>
+    <p>JobAgent et l'ensemble de ses composants (code, design, algorithmes, prompts) sont la propriété exclusive de Nomad Developer. Toute reproduction, modification ou exploitation sans autorisation est interdite.</p>
+    <p>Le contenu généré à partir de votre profil (candidatures, lettres) vous appartient. Vous accordez à JobAgent une licence d'utilisation limitée pour améliorer le service.</p>
+  </div>
+
+  <div class="section">
+    <h2>6. Disponibilité et modifications du service</h2>
+    <p>JobAgent est fourni <strong>en l'état</strong>, sans garantie de disponibilité continue. En phase bêta :</p>
+    <ul>
+      <li>Le service peut être interrompu pour maintenance à tout moment</li>
+      <li>Des fonctionnalités peuvent être ajoutées, modifiées ou supprimées</li>
+      <li>Le passage à une offre payante pourra intervenir en sortie de bêta</li>
+    </ul>
+    <p>Nous nous engageons à vous informer par email de toute modification majeure avec un préavis raisonnable.</p>
+  </div>
+
+  <div class="section">
+    <h2>7. Limitation de responsabilité</h2>
+    <p>JobAgent ne saurait être tenu responsable :</p>
+    <ul>
+      <li>Des décisions de recrutement prises par des tiers</li>
+      <li>De l'exactitude des offres d'emploi scrapées depuis des sources externes</li>
+      <li>Des pertes ou dommages résultant de l'utilisation du service</li>
+      <li>Des interruptions de service indépendantes de notre volonté</li>
+      <li>Du contenu des offres d'emploi collectées</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>8. Résiliation</h2>
+    <p>Vous pouvez supprimer votre compte à tout moment en contactant <a href="mailto:contact@ibrahima-bah.com">contact@ibrahima-bah.com</a>. La suppression entraîne l'effacement de vos données dans les délais prévus par notre politique de confidentialité.</p>
+    <p>Nous nous réservons le droit de suspendre ou supprimer tout compte en cas de violation des présentes conditions.</p>
+  </div>
+
+  <div class="section">
+    <h2>9. Droit applicable</h2>
+    <p>Les présentes conditions sont régies par le <strong>droit français</strong>. En cas de litige, les parties s'engagent à rechercher une solution amiable avant tout recours judiciaire. À défaut, les tribunaux français seront compétents.</p>
+  </div>
+
+  <div class="section">
+    <h2>10. Contact</h2>
+    <div class="contact-card">
+      <div class="label">Éditeur</div>
+      <div class="value" style="margin-bottom:12px">Nomad Developer — Auto-entrepreneur, France</div>
+      <div class="label">Email</div>
+      <div class="value"><a href="mailto:contact@ibrahima-bah.com">contact@ibrahima-bah.com</a></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="privacy.html">Confidentialité</a>
+    <a href="terms.html" class="active">Conditions d'utilisation</a>
+    <a href="legal.html">Mentions légales</a>
+    <a href="https://job-agent-ibrahima.netlify.app">← Dashboard</a>
+  </div>
+</div>
+</body>
+</html>
