@@ -219,6 +219,8 @@ async def migrate_database(db: AsyncSession = Depends(get_db)):
     sans effacer les données existantes.
     """
     queries = [
+        "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;",
+        "ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;",
         "ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT FALSE;",
         "ALTER TABLE users ADD COLUMN scraping_count_today INTEGER DEFAULT 0;",
         "ALTER TABLE users ADD COLUMN scraping_date DATE;",
@@ -226,8 +228,21 @@ async def migrate_database(db: AsyncSession = Depends(get_db)):
         "ALTER TABLE users ADD COLUMN applications_month INTEGER;",
         "ALTER TABLE users ADD COLUMN applications_year INTEGER;",
         "ALTER TABLE users ADD COLUMN scoring_count_today INTEGER DEFAULT 0;",
-        "ALTER TABLE users ADD COLUMN scoring_date DATE;"
+        "ALTER TABLE users ADD COLUMN scoring_date DATE;",
+        "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP;",
+        "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;"
     ]
+
+    # Colonnes Profile manquantes (en cas de DB ancienne)
+    profile_cols = [
+        ("first_name", "VARCHAR"), ("last_name", "VARCHAR"), ("phone", "VARCHAR"), ("location", "VARCHAR"),
+        ("education_level", "VARCHAR"), ("school", "VARCHAR"), ("graduation_year", "VARCHAR"),
+        ("strengths", "TEXT"), ("pitch", "TEXT"), ("motivation", "TEXT"),
+        ("linkedin_url", "VARCHAR"), ("portfolio_url", "VARCHAR")
+    ]
+    for col, ctype in profile_cols:
+        queries.append(f"ALTER TABLE profiles ADD COLUMN {col} {ctype};")
 
     profile_arrays = ["skills", "skills_technical", "skills_soft", "tools", "languages", "target_roles", "target_locations"]
     for col in profile_arrays:
