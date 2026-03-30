@@ -3,7 +3,8 @@ import uuid
 from datetime import datetime
 from sqlalchemy import String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSON
+from sqlalchemy import JSON
+from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 from app.models.user import User
 
@@ -29,7 +30,7 @@ class Profile(Base):
     graduation_year: Mapped[str] = mapped_column(String, nullable=True)
 
     # Compétences — types exacts de la base
-    skills: Mapped[list] = mapped_column(ARRAY(String), default=[])
+    skills: Mapped[list] = mapped_column(JSON, default=[])
     skills_technical: Mapped[list] = mapped_column(JSON, default=[])
     skills_soft: Mapped[list] = mapped_column(JSON, default=[])
     tools: Mapped[list] = mapped_column(JSON, default=[])

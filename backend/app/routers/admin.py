@@ -98,21 +98,30 @@ async def get_stats(
         select(func.count()).where(Application.status.in_(["interview", "interview_proposed"]))
     )
 
+    total = total_users.scalar() or 0
+    active = active_users.scalar() or 0
+    premium = premium_users.scalar() or 0
+    new_week = new_users_week.scalar() or 0
+    total_a = total_apps.scalar() or 0
+    sent = sent_apps.scalar() or 0
+    interviews = interview_apps.scalar() or 0
+    total_j = total_jobs.scalar() or 0
+
     return {
         "users": {
-            "total": total_users.scalar() or 0,
-            "active": active_users.scalar() or 0,
-            "premium": premium_users.scalar() or 0,
-            "freemium": (total_users.scalar() or 0) - (premium_users.scalar() or 0),
-            "new_this_week": new_users_week.scalar() or 0,
+            "total": total,
+            "active": active,
+            "premium": premium,
+            "freemium": total - premium,
+            "new_this_week": new_week,
         },
         "applications": {
-            "total": total_apps.scalar() or 0,
-            "sent": sent_apps.scalar() or 0,
-            "interviews": interview_apps.scalar() or 0,
+            "total": total_a,
+            "sent": sent,
+            "interviews": interviews,
         },
         "jobs": {
-            "total": total_jobs.scalar() or 0,
+            "total": total_j,
         },
     }
 
