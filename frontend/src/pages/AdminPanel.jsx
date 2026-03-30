@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { api as baseApi, API } from '../api';
+import { API } from '../api';
 import { useToast } from '../hooks/useToast';
+import { Toasts } from '../components/Toasts';
 
 const ADMIN_EMAIL = 'contact@ibrahima-bah.com';
 
-const getTitle = () => { document.title = "Admin — JobAgent"; };
 const getAdminToken = () => sessionStorage.getItem('jat_admin');
 const setAdminToken = t => sessionStorage.setItem('jat_admin', t);
 const clearAdminToken = () => sessionStorage.removeItem('jat_admin');
@@ -31,7 +31,35 @@ function QuotaBar({ used, limit, color }) {
   );
 }
 
-function SetupBanner({ toast, onDone }) {
+/* ── AUTH WRAPPER — same split layout as main AuthPage ── */
+function AdminAuthLayout({ children }) {
+  return (
+    <div className="auth-wrap">
+      <div className="auth-left">
+        <div className="auth-brand">Job<span>Agent</span></div>
+        <div>
+          <div className="auth-tagline">Panel<br /><span>Admin</span>istrateur</div>
+          <div className="auth-desc" style={{ marginTop: 10 }}>
+            Gestion des utilisateurs, quotas et statistiques d'usage.
+          </div>
+        </div>
+        <div className="auth-features">
+          {['Statistiques en temps réel', 'Gestion Premium / Freemium', 'Blocage & suppression', 'Reset des quotas'].map(f => (
+            <div className="auth-feature" key={f}><div className="auth-dot"></div>{f}</div>
+          ))}
+        </div>
+      </div>
+      <div className="auth-right">
+        <div className="auth-box">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SETUP: création du compte admin ── */
+function SetupBanner({ toast, onDone, onBack }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,57 +80,58 @@ function SetupBanner({ toast, onDone }) {
       if (!r.ok) { setErr(d.detail || 'Erreur lors de la création'); setLoading(false); return; }
       toast.ok('Compte admin créé ✓ — vous pouvez maintenant vous connecter');
       onDone();
-    } catch { 
-      setErr('Serveur inaccessible'); 
-    } finally { 
-      setLoading(false); 
+    } catch {
+      setErr('Serveur inaccessible');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="setup-banner">
-      <div className="setup-title">⚙ Initialisation du compte administrateur</div>
-      <div className="setup-sub">Ce formulaire est à usage unique. Il disparaît dès que le compte est créé.</div>
-      {err && <div className="auth-err" style={{ marginBottom: 12 }}>⚠ {err}</div>}
-      <div className="setup-grid">
-        <div className="setup-field">
-          <span className="setup-label">Email admin (fixe)</span>
-          <input className="setup-input readonly" value={ADMIN_EMAIL} readOnly disabled />
-        </div>
-        <div className="setup-field">
-          <span className="setup-label">Mot de passe</span>
-          <input
-            className="setup-input"
-            type="password"
-            placeholder="Min. 8 caractères"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && create()}
-          />
-        </div>
-        <div className="setup-field">
-          <span className="setup-label">Confirmer le mot de passe</span>
-          <input
-            className="setup-input"
-            type="password"
-            placeholder="Répéter le mot de passe"
-            value={confirm}
-            onChange={e => setConfirm(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && create()}
-          />
-        </div>
+    <AdminAuthLayout>
+      <div className="auth-title">⚙ Initialisation</div>
+      <div className="auth-sub">Création du compte administrateur · usage unique</div>
+      {err && <div className="auth-err">⚠ {err}</div>}
+      <div className="form-grp">
+        <label className="form-lbl">Email admin (verrouillé)</label>
+        <input className="form-inp" value={ADMIN_EMAIL} readOnly disabled style={{ opacity: 0.6, cursor: 'not-allowed' }} />
       </div>
-      <div className="setup-footer">
-        <button className="btn-create" onClick={create} disabled={loading}>
-          {loading ? <><span className="spinner"></span> Création...</> : '➕ Créer le compte admin'}
-        </button>
-        <span className="setup-note">L'email est verrouillé sur {ADMIN_EMAIL}</span>
+      <div className="form-grp">
+        <label className="form-lbl">Mot de passe</label>
+        <input
+          className="form-inp"
+          type="password"
+          placeholder="Min. 8 caractères"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && create()}
+        />
+        <div className="pw-hint">Min. 8 caractères</div>
       </div>
-    </div>
+      <div className="form-grp">
+        <label className="form-lbl">Confirmer</label>
+        <input
+          className="form-inp"
+          type="password"
+          placeholder="Répéter le mot de passe"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && create()}
+        />
+      </div>
+      <button className="btn-submit" onClick={create} disabled={loading}>
+        {loading && <span className="spinner"></span>}
+        {loading ? 'Création...' : '➕ Créer le compte admin'}
+      </button>
+      <div className="auth-toggle">
+        <a onClick={onBack}>◀ Revenir à la connexion</a>
+      </div>
+    </AdminAuthLayout>
   );
 }
 
-function LoginPage({ onLogin, children }) {
+/* ── LOGIN ── */
+function LoginPage({ onLogin, onSetup }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
@@ -119,36 +148,44 @@ function LoginPage({ onLogin, children }) {
       const d = await r.json();
       if (!r.ok) { setErr(d.detail || 'Erreur'); return; }
       setAdminToken(d.access_token);
-      
+
       const ra = await fetch(`${API}/api/admin/stats`, {
         headers: { 'Authorization': `Bearer ${d.access_token}` }
       });
       if (ra.status === 403) { clearAdminToken(); setErr('Accès refusé — compte non autorisé'); return; }
       onLogin();
-    } catch { 
-      setErr('Serveur inaccessible'); 
-    } finally { 
-      setLoading(false); 
+    } catch {
+      setErr('Serveur inaccessible');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-box">
-        <div className="auth-title">🔐 Admin</div>
-        <div className="auth-sub">Accès réservé aux administrateurs JobAgent</div>
-        {err && <div className="auth-err">⚠ {err}</div>}
-        <div className="form-grp"><label className="form-lbl">Email admin</label><input className="form-inp" type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="contact@ibrahima-bah.com" /></div>
-        <div className="form-grp"><label className="form-lbl">Mot de passe</label><input className="form-inp" type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="••••••••" /></div>
-        <button className="btn-submit" onClick={submit} disabled={loading}>
-          {loading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><span className="spinner"></span>Connexion...</span> : 'Se connecter'}
-        </button>
-        {children}
+    <AdminAuthLayout>
+      <div className="auth-title">🔐 Connexion Admin</div>
+      <div className="auth-sub">Accès réservé aux administrateurs JobAgent</div>
+      {err && <div className="auth-err">⚠ {err}</div>}
+      <div className="form-grp">
+        <label className="form-lbl">Email admin</label>
+        <input className="form-inp" type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="contact@ibrahima-bah.com" />
       </div>
-    </div>
+      <div className="form-grp">
+        <label className="form-lbl">Mot de passe</label>
+        <input className="form-inp" type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} placeholder="••••••••" />
+      </div>
+      <button className="btn-submit" onClick={submit} disabled={loading}>
+        {loading && <span className="spinner"></span>}
+        {loading ? 'Connexion...' : 'Se connecter'}
+      </button>
+      <div className="auth-toggle">
+        Première connexion ? <a onClick={onSetup}>Créer le compte admin</a>
+      </div>
+    </AdminAuthLayout>
   );
 }
 
+/* ── ADMIN PANEL (dashboard) ── */
 function Panel({ toast }) {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState(null);
@@ -170,29 +207,28 @@ function Panel({ toast }) {
       const d = await r.json();
       if (!r.ok) { toast.err(d.detail || 'Erreur'); return; }
       toast.ok(d.message || msg);
-      loadUsers(); 
+      loadUsers();
       loadStats();
-    } catch { 
-      toast.err('Erreur réseau'); 
-    } finally { 
-      setBusy(p => ({ ...p, [userId + endpoint]: false })); 
+    } catch {
+      toast.err('Erreur réseau');
+    } finally {
+      setBusy(p => ({ ...p, [userId + endpoint]: false }));
     }
   };
 
   const deleteUser = async (userId, email) => {
-    // eslint-disable-next-line no-restricted-globals
     if (!confirm(`Supprimer définitivement ${email} et toutes ses données ?`)) return;
     setBusy(p => ({ ...p, [userId + 'del']: true }));
     try {
       const r = await adminApi(`/api/admin/users/${userId}`, { method: 'DELETE' });
       const d = await r.json();
       toast.ok(d.message || 'Compte supprimé');
-      loadUsers(); 
+      loadUsers();
       loadStats();
-    } catch { 
-      toast.err('Erreur'); 
-    } finally { 
-      setBusy(p => ({ ...p, [userId + 'del']: false })); 
+    } catch {
+      toast.err('Erreur');
+    } finally {
+      setBusy(p => ({ ...p, [userId + 'del']: false }));
     }
   };
 
@@ -203,18 +239,29 @@ function Panel({ toast }) {
 
   return (
     <div>
-      <div className="topbar">
-        <div className="brand">Job<span>Agent</span></div>
-        <span className="admin-badge">⚙ ADMIN</span>
-        <button className="logout-btn" onClick={() => { clearAdminToken(); window.location.reload(); }}>↩ Déconnexion</button>
+      {/* Admin topbar */}
+      <div style={{
+        background: 'var(--text)', padding: '13px 20px', display: 'flex',
+        alignItems: 'center', justifyContent: 'space-between'
+      }}>
+        <div className="topbar-brand" style={{ color: 'var(--bg)' }}>Job<span>Agent</span></div>
+        <span className="badge b-warn" style={{ fontSize: 9, letterSpacing: '0.5px' }}>⚙ ADMIN</span>
+        <button
+          onClick={() => { clearAdminToken(); window.location.reload(); }}
+          className="btn btn-ghost"
+          style={{ color: 'rgba(255,255,255,0.4)', borderColor: 'rgba(255,255,255,0.1)', fontSize: 11 }}
+        >↩ Déconnexion</button>
       </div>
 
-      <div className="main">
-        <div className="page-title">Panel Administrateur</div>
-        <div className="page-sub">Gestion des utilisateurs et statistiques d'usage · JobAgent Bêta</div>
+      <div className="main" style={{ maxWidth: 1100, margin: '0 auto' }}>
+        <div className="page-header">
+          <div className="page-title">Panel Administrateur</div>
+          <div className="page-sub">Gestion des utilisateurs et statistiques d'usage · JobAgent Bêta</div>
+        </div>
 
+        {/* STATS */}
         {!stats ? (
-          <div className="loading"><span className="spinner spinner-dark"></span>Chargement...</div>
+          <div className="loading"><span className="spinner"></span>Chargement...</div>
         ) : (
           <div className="stats-grid">
             {[
@@ -232,81 +279,82 @@ function Panel({ toast }) {
           </div>
         )}
 
-        <div className="table-card">
-          <div className="table-hdr">
-            <span className="table-ttl">👥 Utilisateurs ({users?.length || 0})</span>
+        {/* USERS TABLE */}
+        <div className="card">
+          <div className="card-hdr">
+            <span className="card-ttl">👥 Utilisateurs ({users?.length || 0})</span>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input className="search-inp" placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
-              <button className="btn btn-sec" onClick={() => { loadUsers(); loadStats(); }}>↻ Actualiser</button>
+              <input className="form-inp" style={{ width: 200, padding: '7px 11px', fontSize: 12 }} placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} />
+              <button className="btn btn-sec btn-sm" onClick={() => { loadUsers(); loadStats(); }}>↻ Actualiser</button>
             </div>
           </div>
           {!users ? (
-            <div className="loading"><span className="spinner spinner-dark"></span>Chargement...</div>
+            <div className="loading"><span className="spinner"></span>Chargement...</div>
           ) : (
-            <div className="table-wrap">
-              <table>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th>Utilisateur</th>
-                    <th>Plan</th>
-                    <th>Statut</th>
-                    <th>Candidatures</th>
-                    <th>Scraping/j</th>
-                    <th>Scoring/j</th>
-                    <th>Inscription</th>
-                    <th>Actions</th>
+                    {['Utilisateur', 'Plan', 'Statut', 'Candidatures', 'Scraping/j', 'Scoring/j', 'Inscription', 'Actions'].map(h => (
+                      <th key={h} style={{
+                        padding: '9px 14px', textAlign: 'left', fontSize: '9.5px',
+                        fontFamily: 'DM Mono, monospace', textTransform: 'uppercase',
+                        letterSpacing: '0.7px', color: 'var(--text-dim)',
+                        borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap'
+                      }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(u => (
-                    <tr key={u.id}>
-                      <td>
+                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 14px', fontSize: '12.5px' }}>
                         <div style={{ fontWeight: 500, fontSize: 13 }}>{u.full_name}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>{u.email}</div>
                       </td>
-                      <td>
+                      <td style={{ padding: '12px 14px' }}>
                         {u.is_premium
                           ? <span className="badge b-mint">⭐ Premium</span>
                           : <span className="badge b-dim">Freemium</span>}
                       </td>
-                      <td>
+                      <td style={{ padding: '12px 14px' }}>
                         {u.is_active
                           ? <span className="badge b-mint">● Actif</span>
                           : <span className="badge b-danger">● Bloqué</span>}
                       </td>
-                      <td>
+                      <td style={{ padding: '12px 14px' }}>
                         <QuotaBar used={u.applications_this_month} limit={u.is_premium ? 999 : 5} />
                         <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>{u.applications_count} total</div>
                       </td>
-                      <td><QuotaBar used={u.scrapings_today} limit={u.is_premium ? 999 : 2} /></td>
-                      <td><QuotaBar used={u.scoring_today} limit={u.is_premium ? 999 : 10} /></td>
-                      <td style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
+                      <td style={{ padding: '12px 14px' }}><QuotaBar used={u.scrapings_today} limit={u.is_premium ? 999 : 2} /></td>
+                      <td style={{ padding: '12px 14px' }}><QuotaBar used={u.scoring_today} limit={u.is_premium ? 999 : 10} /></td>
+                      <td style={{ padding: '12px 14px', fontSize: 11, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace' }}>
                         {new Date(u.created_at).toLocaleDateString('fr-FR')}
                       </td>
-                      <td>
-                        <div className="actions">
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                           <button
-                            className={`btn ${u.is_premium ? 'btn-sec' : 'btn-mint'}`}
+                            className={`btn btn-sm ${u.is_premium ? 'btn-sec' : 'btn-mint'}`}
                             onClick={() => action(u.id, 'toggle-premium', 'PATCH', u.is_premium ? 'Passé en freemium' : 'Passé en premium ⭐')}
                             disabled={busy[u.id + 'toggle-premium']}
                           >
-                            {u.is_premium ? '↓ Freemium' : '⭐ Premium'}
+                            {u.is_premium ? '↓ Free' : '⭐ Prem'}
                           </button>
                           <button
-                            className={`btn ${u.is_active ? 'btn-warn' : 'btn-sec'}`}
+                            className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-sec'}`}
                             onClick={() => action(u.id, 'toggle-active', 'PATCH', u.is_active ? 'Compte bloqué' : 'Compte activé')}
                             disabled={busy[u.id + 'toggle-active']}
                           >
-                            {u.is_active ? '🔒 Bloquer' : '✓ Activer'}
+                            {u.is_active ? '🔒' : '✓'}
                           </button>
                           <button
-                            className="btn btn-sec"
+                            className="btn btn-sm btn-sec"
                             onClick={() => action(u.id, 'reset-quotas', 'PATCH', 'Quotas réinitialisés')}
                             disabled={busy[u.id + 'reset-quotas']}
                             title="Réinitialiser les quotas"
                           >↻</button>
                           <button
-                            className="btn btn-danger"
+                            className="btn btn-sm btn-danger"
                             onClick={() => deleteUser(u.id, u.email)}
                             disabled={busy[u.id + 'del']}
                             title="Supprimer le compte"
@@ -316,7 +364,7 @@ function Panel({ toast }) {
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)' }}>Aucun utilisateur trouvé</td></tr>
+                    <tr><td colSpan={8} className="empty">Aucun utilisateur trouvé</td></tr>
                   )}
                 </tbody>
               </table>
@@ -328,47 +376,28 @@ function Panel({ toast }) {
   );
 }
 
+/* ── EXPORT ── */
 export function AdminPanel() {
   const [logged, setLogged] = useState(!!getAdminToken());
   const [showSetup, setShowSetup] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
-    getTitle();
+    document.title = "Admin — JobAgent";
   }, []);
 
   return (
     <>
       {!logged ? (
         !showSetup ? (
-          <LoginPage onLogin={() => setLogged(true)}>
-            <div style={{ textAlign: 'center', marginTop: 24 }}>
-              <button
-                onClick={() => setShowSetup(true)}
-                style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-dim)', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'DM Sans,sans-serif' }}
-              >
-                Première connexion ? Créer le compte admin
-              </button>
-            </div>
-          </LoginPage>
+          <LoginPage onLogin={() => setLogged(true)} onSetup={() => setShowSetup(true)} />
         ) : (
-          <div className="auth-wrap">
-            <div style={{ maxWidth: 640, width: '100%', margin: '0 auto', padding: '0 20px' }}>
-              <SetupBanner toast={toast} onDone={() => setShowSetup(false)} />
-              <div style={{ textAlign: 'center', marginTop: 10 }}>
-                <button
-                  onClick={() => setShowSetup(false)}
-                  style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
-                >
-                  ◀ Revenir à la connexion
-                </button>
-              </div>
-            </div>
-          </div>
+          <SetupBanner toast={toast} onDone={() => setShowSetup(false)} onBack={() => setShowSetup(false)} />
         )
       ) : (
         <Panel toast={toast} />
       )}
+      <Toasts items={toast.items} />
     </>
   );
 }
