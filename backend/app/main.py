@@ -17,7 +17,11 @@ app = FastAPI(title="Job Agent API", version="1.0.0", lifespan=lifespan)
 # CORS — autorise le frontend à appeler l'API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://job-agent-ibrahima.netlify.app"],  # remplace "*" par ton URL frontend en production
+    allow_origins=[
+        "https://job-agent-ibrahima.netlify.app", 
+        "https://agent-candidature.vercel.app",
+        "http://localhost:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
