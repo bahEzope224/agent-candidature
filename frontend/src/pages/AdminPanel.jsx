@@ -102,7 +102,7 @@ function SetupBanner({ toast, onDone }) {
   );
 }
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, children }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
@@ -143,6 +143,7 @@ function LoginPage({ onLogin }) {
         <button className="btn-submit" onClick={submit} disabled={loading}>
           {loading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><span className="spinner"></span>Connexion...</span> : 'Se connecter'}
         </button>
+        {children}
       </div>
     </div>
   );
@@ -339,23 +340,32 @@ export function AdminPanel() {
   return (
     <>
       {!logged ? (
-        <div>
-          <LoginPage onLogin={() => setLogged(true)} />
-          <div style={{ textAlign: 'center', marginTop: -20, paddingBottom: 30 }}>
-            {!showSetup ? (
+        !showSetup ? (
+          <LoginPage onLogin={() => setLogged(true)}>
+            <div style={{ textAlign: 'center', marginTop: 24 }}>
               <button
                 onClick={() => setShowSetup(true)}
-                style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-dim)', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'DM Sans,sans-serif' }}
+                style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-dim)', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'DM Sans,sans-serif' }}
               >
                 Première connexion ? Créer le compte admin
               </button>
-            ) : (
-              <div style={{ maxWidth: 600, margin: '0 auto', padding: '0 20px' }}>
-                <SetupBanner toast={toast} onDone={() => setShowSetup(false)} />
+            </div>
+          </LoginPage>
+        ) : (
+          <div className="auth-wrap">
+            <div style={{ maxWidth: 640, width: '100%', margin: '0 auto', padding: '0 20px' }}>
+              <SetupBanner toast={toast} onDone={() => setShowSetup(false)} />
+              <div style={{ textAlign: 'center', marginTop: 10 }}>
+                <button
+                  onClick={() => setShowSetup(false)}
+                  style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'DM Sans,sans-serif' }}
+                >
+                  ◀ Revenir à la connexion
+                </button>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <Panel toast={toast} />
       )}
