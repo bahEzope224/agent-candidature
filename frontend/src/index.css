@@ -1526,6 +1526,8 @@
       cursor: grab;
       transition: transform 0.1s, box-shadow 0.1s, border-color 0.1s;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
       position: relative;
     }
 

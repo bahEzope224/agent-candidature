@@ -1,6 +1,7 @@
 import { 
   DndContext, 
-  PointerSensor, 
+  MouseSensor,
+  TouchSensor,
   useSensor, 
   useSensors,
   DragOverlay,
@@ -63,9 +64,15 @@ export function KanbanBoard({ apps, onStatusChange, onDetails }) {
   const [activeId, setActiveId] = useState(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
       },
     })
   );
