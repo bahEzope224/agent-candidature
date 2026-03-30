@@ -4,7 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.services.scraper.wttj import scrape_all_queries
-from app.services.job_service import save_many_offers
+from app.services.job_service import save_many_offers, save_job_offer
+from app.services.scraper.base import RawJobOffer
 from app.services.scorer import score_offer, get_action, profile_to_scorer_dict
 from app.models.user import User
 from app.services.auth_service import get_current_user 
@@ -64,6 +65,37 @@ async def trigger_scrape(
 
     background_tasks.add_task(run_scrape)
     return {"message": "Scraping démarré en arrière-plan"}
+
+
+@router.post("/manual-create")
+async def manual_create_offer(
+    title: str,
+    company: str,
+    url: str,
+    location: str = "À distance",
+    platform: str = "Extension",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Crée une offre manuellement (via l'extension Chrome)."""
+    raw = RawJobOffer(
+        title=title,
+        company_name=company,
+        location=location,
+        description="Offre capturée via extension",
+        source_url=url,
+        source_platform=platform,
+    )
+    offer, is_new = await save_job_offer(db, raw, current_user.id)
+    await db.commit()
+    
+    return {
+        "id": str(offer.id),
+        "title": offer.title,
+        "is_new": is_new,
+        "status": offer.status
+    }
+
 
 @router.get("/")
 async def list_offers(

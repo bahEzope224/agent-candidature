@@ -11,6 +11,7 @@ export const ST = {
   ready_to_send: { l: 'Prête', c: 'b-warn' },
   response_received: { l: 'Réponse', c: 'b-mint' },
   interview_proposed: { l: '🎯 Entretien', c: 'b-mint' },
+  offer: { l: '🎉 Offre reçue', c: 'b-mint' },
 };
 
 export function SBadge({ s }) {

@@ -388,6 +388,34 @@ async def confirm_refused(
     return {"id": str(app.id), "status": "refused"}
 
 
+@router.patch("/{application_id}/status")
+async def update_application_status(
+    application_id: uuid.UUID,
+    status: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Met à jour le statut d'une candidature (utilisé par le Kanban)."""
+    app = await _get_app(application_id, current_user.id, db)
+    # Liste des statuts autorisés
+    valid_statuses = [
+        "to_apply", "sent", "follow_up_needed", "follow_up_sent", 
+        "no_response", "interview", "refused", "offer", "archived"
+    ]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Statut invalide : {status}")
+    
+    app.status = status
+    if status == "sent" and not app.sent_at:
+        app.sent_at = datetime.utcnow()
+    elif status == "follow_up_sent" and not app.followup_sent_at:
+        app.followup_sent_at = datetime.utcnow()
+        
+    await db.commit()
+    return {"id": str(app.id), "status": app.status}
+
+
+
 # ================================================================
 # HELPERS INTERNES
 # ================================================================

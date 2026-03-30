@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { SBadge } from '../components/SBadge';
+import { KanbanBoard } from '../components/KanbanBoard';
 
 export function ApplicationsPage({ toast }) {
   const [apps, setApps] = useState(null);
   const [filter, setFilter] = useState('all');
   const [sel, setSel] = useState(null);
   const [gen, setGen] = useState(false);
+  const [view, setView] = useState(localStorage.getItem('appView') || 'kanban');
 
   const load = () => api('/api/applications/').then(r => r?.json()).then(d => d && setApps(d));
   useEffect(() => { load(); }, []);
@@ -34,6 +36,15 @@ export function ApplicationsPage({ toast }) {
       reload();
     } catch { 
       toast.err('Erreur'); 
+    }
+  };
+
+  const updateStatus = async (id, status) => {
+    try {
+      await api(`/api/applications/${id}/status?status=${status}`, { method: 'PATCH' });
+      load();
+    } catch {
+      toast.err('Erreur lors de la mise à jour');
     }
   };
 
@@ -83,50 +94,64 @@ export function ApplicationsPage({ toast }) {
           </button>
         </div>
       </div>
-      <div className="filter-bar">
-        {FILTERS.map(f => (
-          <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>
-            {f.l}
-          </button>
-        ))}
-      </div>
-      <div className="card">
-        {!apps ? (
-          <div className="loading"><span className="spinner"></span>Chargement...</div>
-        ) : filtered.length === 0 ? (
-          <div className="empty"><div className="empty-ico">📭</div><div>Aucune candidature</div></div>
-        ) : filtered.map(a => (
-          <div className="list-item" key={a.id}>
-            <div className="list-item-row" onClick={() => loadDet(a.id)} style={{ cursor: 'pointer' }}>
-              <div className="list-item-title">{a.offer}</div>
-              <SBadge s={a.status} />
-            </div>
-            <div className="list-item-meta">
-              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{a.company}</span>
-              {a.confidence && (
-                <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10.5, color: a.confidence >= 0.85 ? 'var(--mint-dark)' : 'var(--warn)' }}>
-                  {Math.round(a.confidence * 100)}%
-                </span>
-              )}
-              <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text-dim)' }}>{new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
-            </div>
-            <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
-              {a.status === 'to_apply' && <>
-                <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-sent', 'Envoyé ✓', load)}>✅ Envoyé</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir mail</button>
-              </>}
-              {a.status === 'follow_up_needed' && <>
-                <button className="btn btn-sec btn-sm" onClick={() => confirmAction(a.id, 'confirm-followup-sent', 'Relance confirmée ✓', load)}>🔁 J'ai relancé</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir relance</button>
-              </>}
-              {['sent', 'follow_up_sent', 'follow_up_needed', 'no_response'].includes(a.status) && <>
-                <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-interview', '🎯 Entretien enregistré !', load)}>🎯 Entretien</button>
-                <button className="btn btn-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid rgba(192,57,43,0.2)' }} onClick={() => confirmAction(a.id, 'confirm-refused', 'Refus enregistré', load)}>✕ Refus</button>
-              </>}
-            </div>
-          </div>
-        ))}
-      </div>
+       <div className="filter-bar" style={{ justifyContent: 'space-between' }}>
+         <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+           {FILTERS.map(f => (
+             <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>
+               {f.l}
+             </button>
+           ))}
+         </div>
+         <div className="view-toggle" style={{ display: 'flex', background: 'var(--surface2)', padding: 2, borderRadius: 8 }}>
+            <button className={`btn btn-sm ${view === 'list' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('list'); localStorage.setItem('appView', 'list'); }}>☰</button>
+            <button className={`btn btn-sm ${view === 'kanban' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('kanban'); localStorage.setItem('appView', 'kanban'); }}>◈</button>
+         </div>
+       </div>
+
+       {view === 'kanban' && apps && (
+         <KanbanBoard apps={apps} onStatusChange={updateStatus} onDetails={loadDet} />
+       )}
+
+       {view === 'list' && (
+         <div className="card">
+           {!apps ? (
+             <div className="loading"><span className="spinner"></span>Chargement...</div>
+           ) : filtered.length === 0 ? (
+             <div className="empty"><div className="empty-ico">📭</div><div>Aucune candidature</div></div>
+           ) : filtered.map(a => (
+             <div className="list-item" key={a.id}>
+               <div className="list-item-row" onClick={() => loadDet(a.id)} style={{ cursor: 'pointer' }}>
+                 <div className="list-item-title">{a.offer}</div>
+                 <SBadge s={a.status} />
+               </div>
+               {/* Rest of list item content */}
+               <div className="list-item-meta">
+                 <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{a.company}</span>
+                 {a.confidence && (
+                   <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10.5, color: a.confidence >= 0.85 ? 'var(--mint-dark)' : 'var(--warn)' }}>
+                     {Math.round(a.confidence * 100)}%
+                   </span>
+                 )}
+                 <span style={{ fontFamily: 'DM Mono,monospace', fontSize: 10, color: 'var(--text-dim)' }}>{new Date(a.created_at).toLocaleDateString('fr-FR')}</span>
+               </div>
+               <div style={{ display: 'flex', gap: 5, marginTop: 5, flexWrap: 'wrap' }}>
+                 {a.status === 'to_apply' && <>
+                   <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-sent', 'Envoyé ✓', load)}>✅ Envoyé</button>
+                   <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir mail</button>
+                 </>}
+                 {a.status === 'follow_up_needed' && <>
+                   <button className="btn btn-sec btn-sm" onClick={() => confirmAction(a.id, 'confirm-followup-sent', 'Relance confirmée ✓', load)}>🔁 J'ai relancé</button>
+                   <button className="btn btn-ghost btn-sm" onClick={() => loadDet(a.id)}>📄 Voir relance</button>
+                 </>}
+                 {['sent', 'follow_up_sent', 'follow_up_needed', 'no_response'].includes(a.status) && <>
+                   <button className="btn btn-mint btn-sm" onClick={() => confirmAction(a.id, 'confirm-interview', '🎯 Entretien enregistré !', load)}>🎯 Entretien</button>
+                   <button className="btn btn-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid rgba(192,57,43,0.2)' }} onClick={() => confirmAction(a.id, 'confirm-refused', 'Refus enregistré', load)}>✕ Refus</button>
+                 </>}
+               </div>
+             </div>
+           ))}
+         </div>
+       )}
       
       {sel && (
         <div className="modal-ov" onClick={() => setSel(null)}>

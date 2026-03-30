@@ -10,6 +10,7 @@ import { ApplicationsPage } from './pages/ApplicationsPage';
 import { OffersPage } from './pages/OffersPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminPanel } from './pages/AdminPanel';
+import { ThemeToggle } from './components/ThemeToggle';
 import { Privacy } from './pages/legal/Privacy';
 import { Terms } from './pages/legal/Terms';
 import { Legal } from './pages/legal/Legal';
@@ -55,7 +56,11 @@ function ProtectedLayout() {
         <div className="sb-brand"><div className="sb-logo">Job<span>Agent</span></div><div className="sb-version">v1.0 — MVP</div></div>
         <div className="sb-user">
           <div className="sb-avatar">{initials}</div>
-          <div><div className="sb-uname">{user.full_name || 'Utilisateur'}</div><div className="sb-uemail">{user.email}</div></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="sb-uname">{user.full_name || 'Utilisateur'}</div>
+            <div className="sb-uemail">{user.email}</div>
+          </div>
+          <ThemeToggle />
         </div>
         <nav className="sb-nav">
           <div className="sb-section">Navigation</div>

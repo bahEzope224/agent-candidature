@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "JobAgent QuickSave",
+  "version": "1.0",
+  "description": "Sauvegarde instantanée d'offres d'emploi vers JobAgent.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/jobs/*",
+        "*://*.welcomeothejungle.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ],
+  "host_permissions": [
+    "https://agent-job-1.onrender.com/*"
+  ]
+}
