@@ -4,7 +4,7 @@ Accessible uniquement depuis bahibrahimatalibe@gmail.com
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete as sql_delete
+from sqlalchemy import select, func, text, delete as sql_delete
 from datetime import datetime, date, timedelta
 from app.database import get_db
 from app.models.user import User
@@ -210,3 +210,33 @@ async def reset_user_quotas(
     await db.commit()
 
     return {"message": "Quotas réinitialisés", "email": user.email}
+
+# ── Migration Temporaire DB ────────────────────────────────────
+@router.get("/migrate-db-temp")
+async def migrate_database(db: AsyncSession = Depends(get_db)):
+    """
+    Exécute des requêtes ALTER TABLE pour ajouter les colonnes manquantes 
+    sans effacer les données existantes.
+    """
+    queries = [
+        "ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT FALSE;",
+        "ALTER TABLE users ADD COLUMN scraping_count_today INTEGER DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN scraping_date DATE;",
+        "ALTER TABLE users ADD COLUMN applications_count_month INTEGER DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN applications_month INTEGER;",
+        "ALTER TABLE users ADD COLUMN applications_year INTEGER;",
+        "ALTER TABLE users ADD COLUMN scoring_count_today INTEGER DEFAULT 0;",
+        "ALTER TABLE users ADD COLUMN scoring_date DATE;"
+    ]
+    
+    results = []
+    for q in queries:
+        try:
+            await db.execute(text(q))
+            await db.commit()
+            results.append({"query": q, "status": "success"})
+        except Exception as e:
+            await db.rollback()
+            results.append({"query": q, "status": "failed_or_already_exists", "error": str(e)})
+
+    return {"message": "Migration attempts finished", "results": results}
