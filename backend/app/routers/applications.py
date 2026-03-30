@@ -26,6 +26,8 @@ from app.models.profile import Profile
 from app.services.job_service import create_application_draft
 from app.services.auth_service import get_current_user
 import uuid
+from app.services.freemium_middleware import enforce_application_quota
+
 
 router = APIRouter()
 
@@ -115,6 +117,8 @@ async def generate_batch(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    await enforce_application_quota(current_user, db)
+
     """
     Génère des lettres de motivation pour les offres shortlistées.
     Les candidatures sont liées à l'utilisateur connecté.
@@ -246,6 +250,8 @@ async def generate_for_offer(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    await enforce_application_quota(current_user, db)
+
     """
     Génère lettre de motivation + mail pour une offre spécifique.
     La candidature est liée à l'utilisateur connecté.

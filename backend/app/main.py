@@ -5,6 +5,7 @@ from app.config import settings
 from app.database import create_tables
 from app.routers import jobs, applications, auth, profile
 import app.models
+from app.routers import admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,6 +27,8 @@ app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(applications.router, prefix="/api/applications", tags=["applications"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+
 
 @app.get("/health")
 async def health():

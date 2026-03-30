@@ -12,6 +12,8 @@ from app.models.profile import Profile
 from app.models.job_offer import JobOffer
 import structlog
 import uuid
+from app.services.freemium_middleware import enforce_scraping_quota, enforce_scoring_quota
+
 
 router = APIRouter()  # ← doit être avant toutes les routes
 logger = structlog.get_logger()
@@ -19,16 +21,21 @@ logger = structlog.get_logger()
 
 @router.post("/scrape")
 async def trigger_scrape(
+    
     background_tasks: BackgroundTasks,
     locations: list[str] = ["Paris"],
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    
+    await enforce_scraping_quota(current_user, db)
+
     # Charge le profil pour personnaliser les requêtes
     profile_result = await db.execute(
         select(Profile).where(Profile.user_id == current_user.id)
     )
     profile = profile_result.scalar_one_or_none()
+
 
     # Construit les requêtes depuis le profil
     contract = profile.target_contract or "stage" if profile else "stage"
@@ -95,6 +102,8 @@ async def score_all_pending(
     current_user: User = Depends(get_current_user),
 
 ):
+    await enforce_scoring_quota(current_user, db)
+
     result = await db.execute(
         select(JobOffer)
         .options(selectinload(JobOffer.company))
