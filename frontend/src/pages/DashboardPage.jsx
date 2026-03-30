@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { SBadge } from '../components/SBadge';
 import { ScoreBar } from '../components/ScoreBar';
 
 export function DashboardPage({ toast, user }) {
+  const navigate = useNavigate();
   const [apps, setApps] = useState(null);
   const [jobs, setJobs] = useState(null);
   const [gmail, setGmail] = useState(null);
@@ -87,12 +89,12 @@ export function DashboardPage({ toast, user }) {
       </div>
       <div className="stats-grid">
         {[
-          { c: 'c-mint', ico: '📨', lbl: 'Candidatures', val: stats.total, sub: `${stats.sent} envoyées` }, 
-          { c: 'c-cream', ico: '🎯', lbl: 'Entretiens', val: stats.interviews, sub: 'proposés' }, 
-          { c: 'c-warn', ico: '⏳', lbl: 'À valider', val: stats.pending, sub: 'en attente' }, 
-          { c: 'c-dim', ico: '📋', lbl: 'Offres', val: stats.jobsTotal, sub: `${stats.shortlisted} shortlistées` }
+          { c: 'c-mint', ico: '📨', lbl: 'Candidatures', val: stats.total, sub: `${stats.sent} envoyées`, to: '/applications' }, 
+          { c: 'c-cream', ico: '🎯', lbl: 'Entretiens', val: stats.interviews, sub: 'proposés', to: '/applications?filter=interviews' }, 
+          { c: 'c-warn', ico: '⏳', lbl: 'À valider', val: stats.pending, sub: 'en attente', to: '/applications?filter=pending' }, 
+          { c: 'c-dim', ico: '📋', lbl: 'Offres', val: stats.jobsTotal, sub: `${stats.shortlisted} shortlistées`, to: '/offers' }
         ].map(s => (
-          <div className={`stat-card ${s.c}`} key={s.lbl}>
+          <div className={`stat-card ${s.c}`} key={s.lbl} onClick={() => navigate(s.to)} style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }} onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
             <span className="stat-ico">{s.ico}</span>
             <div className="stat-lbl">{s.lbl}</div>
             <div className="stat-val">{s.val}</div>
@@ -117,20 +119,26 @@ export function DashboardPage({ toast, user }) {
         ))}
       </div>
       <div className="card">
-        <div className="card-hdr"><span className="card-ttl">Meilleures offres</span></div>
+        <div className="card-hdr">
+          <span className="card-ttl">Offres shortlistées</span>
+          <button className="btn btn-sec btn-sm" onClick={() => navigate('/offers')}>Voir tout</button>
+        </div>
         {!jobs ? (
           <div className="loading"><span className="spinner"></span>Chargement...</div>
-        ) : jobs.filter(j => j.relevance_score).sort((a, b) => b.relevance_score - a.relevance_score).slice(0, 5).length === 0 ? (
-          <div className="empty"><div className="empty-ico">🔍</div><div>Lance un scraping</div></div>
-        ) : jobs.filter(j => j.relevance_score).sort((a, b) => b.relevance_score - a.relevance_score).slice(0, 5).map(j => (
-          <div className="act-item" key={j.id}>
-            <div className="act-dot" style={{ background: j.relevance_score >= 80 ? 'var(--mint)' : j.relevance_score >= 60 ? 'var(--warn)' : 'var(--danger)' }}></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="act-ttl">{j.title}</div>
-              <div className="act-meta"><span>{j.platform}</span><ScoreBar s={j.relevance_score} /></div>
+        ) : (() => {
+          const shortlisted = jobs.filter(j => j.status === 'shortlisted' && j.relevance_score).sort((a, b) => b.relevance_score - a.relevance_score).slice(0, 5);
+          return shortlisted.length === 0 ? (
+            <div className="empty"><div className="empty-ico">⭐</div><div>Aucune offre shortlistée</div></div>
+          ) : shortlisted.map(j => (
+            <div className="act-item" key={j.id} onClick={() => navigate('/offers')} style={{ cursor: 'pointer' }}>
+              <div className="act-dot" style={{ background: j.relevance_score >= 80 ? 'var(--mint)' : j.relevance_score >= 60 ? 'var(--warn)' : 'var(--danger)' }}></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="act-ttl">{j.title}</div>
+                <div className="act-meta"><span>{j.platform}</span><ScoreBar s={j.relevance_score} /></div>
+              </div>
             </div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
     </div>
   );
