@@ -18,7 +18,7 @@ router = APIRouter()
 
 # ── Whitelist admins ──────────────────────────────────────────
 ADMIN_EMAILS = {
-    "bahibrahimatalibe4960@gmail.com",
+    "contact@ibrahima-bah.com",
 }
 
 
