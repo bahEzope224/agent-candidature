@@ -228,6 +228,14 @@ async def migrate_database(db: AsyncSession = Depends(get_db)):
         "ALTER TABLE users ADD COLUMN scoring_count_today INTEGER DEFAULT 0;",
         "ALTER TABLE users ADD COLUMN scoring_date DATE;"
     ]
+
+    profile_arrays = ["skills", "skills_technical", "skills_soft", "tools", "languages", "target_roles", "target_locations"]
+    for col in profile_arrays:
+        queries.append(f"ALTER TABLE profiles ALTER COLUMN {col} TYPE JSON USING array_to_json({col});")
+    
+    job_arrays = ["required_skills", "nice_to_have_skills"]
+    for col in job_arrays:
+        queries.append(f"ALTER TABLE job_offers ALTER COLUMN {col} TYPE JSON USING array_to_json({col});")
     
     results = []
     for q in queries:
