@@ -66,18 +66,26 @@ async def register(
             detail="Un compte existe déjà avec cet email",
         )
 
-    user = User(
-        email=body.email,
-        full_name=body.full_name,
-        hashed_password=hash_password(body.password),
-        is_active=True,
-    )
-    db.add(user)
-    await db.flush()
+    try:
+        user = User(
+            email=body.email,
+            full_name=body.full_name,
+            hashed_password=hash_password(body.password),
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
 
-    profile = Profile(user_id=user.id)
-    db.add(profile)
-    await db.commit()
+        profile = Profile(user_id=user.id)
+        db.add(profile)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.error("Erreur lors de la création de l'utilisateur", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur DB interne : {str(e)}"
+        )
 
     token = create_access_token(user.id, user.email)
     logger.info("Nouvel utilisateur créé", email=user.email)
