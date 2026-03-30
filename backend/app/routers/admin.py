@@ -231,11 +231,15 @@ async def migrate_database(db: AsyncSession = Depends(get_db)):
 
     profile_arrays = ["skills", "skills_technical", "skills_soft", "tools", "languages", "target_roles", "target_locations"]
     for col in profile_arrays:
+        queries.append(f"ALTER TABLE profiles ALTER COLUMN {col} DROP DEFAULT;")
         queries.append(f"ALTER TABLE profiles ALTER COLUMN {col} TYPE JSON USING array_to_json({col});")
+        queries.append(f"ALTER TABLE profiles ALTER COLUMN {col} SET DEFAULT '[]'::json;")
     
     job_arrays = ["required_skills", "nice_to_have_skills"]
     for col in job_arrays:
+        queries.append(f"ALTER TABLE job_offers ALTER COLUMN {col} DROP DEFAULT;")
         queries.append(f"ALTER TABLE job_offers ALTER COLUMN {col} TYPE JSON USING array_to_json({col});")
+        queries.append(f"ALTER TABLE job_offers ALTER COLUMN {col} SET DEFAULT '[]'::json;")
     
     results = []
     for q in queries:
