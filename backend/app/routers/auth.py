@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 import structlog
+import asyncio
 
 
 from app.database import get_db
@@ -26,6 +27,23 @@ from app.services.auth_service import (
 
 router = APIRouter()
 logger = structlog.get_logger()
+
+
+# ── Helper log (import lazy pour éviter les circular imports) ──
+async def _log_login_failure(email: str, action: str, request: Request):
+    try:
+        from app.main import write_log
+        await write_log(
+            level="WARNING",
+            action=f"LOGIN_FAILED_{action}",
+            details={
+                "email": email,
+                "ip": request.client.host if request.client else "unknown",
+                "url": str(request.url),
+            },
+        )
+    except Exception:
+        pass
 
 
 # ================================================================
@@ -129,12 +147,15 @@ async def login(
     user = result.scalar_one_or_none()
 
     if not user or not user.hashed_password:
+        # Log de l'échec de connexion (email inconnu)
+        asyncio.create_task(_log_login_failure(email, "EMAIL_NOT_FOUND", request))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou mot de passe incorrect",
         )
 
     if not verify_password(password, user.hashed_password):
+        asyncio.create_task(_log_login_failure(email, "WRONG_PASSWORD", request))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou mot de passe incorrect",

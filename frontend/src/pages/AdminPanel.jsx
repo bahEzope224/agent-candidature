@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API } from '../api';
 import { useToast } from '../hooks/useToast';
 import { Toasts } from '../components/Toasts';
+
 
 const ADMIN_EMAIL = 'contact@ibrahima-bah.com';
 
@@ -279,7 +280,23 @@ function Panel({ toast }) {
           </div>
         )}
 
+        {/* TABS */}
+        <div style={{ display: 'flex', gap: 4, margin: '18px 0 14px', borderBottom: '1px solid var(--border)' }}>
+          {[{ id: 'users', label: '👥 Utilisateurs' }, { id: 'logs', label: '🖥️ Logs & Erreurs' }].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '8px 18px', background: 'none', border: 'none', borderBottom: activeTab === tab.id ? '2px solid var(--mint)' : '2px solid transparent',
+                color: activeTab === tab.id ? 'var(--mint)' : 'var(--text-dim)',
+                fontWeight: activeTab === tab.id ? 700 : 400, cursor: 'pointer', fontSize: 13, transition: 'all 0.15s',
+              }}
+            >{tab.label}</button>
+          ))}
+        </div>
+
         {/* USERS TABLE */}
+        {activeTab === 'users' && (
         <div className="card">
           <div className="card-hdr">
             <span className="card-ttl">👥 Utilisateurs ({users?.length || 0})</span>
@@ -363,14 +380,24 @@ function Panel({ toast }) {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={8} className="empty">Aucun utilisateur trouvé</td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
           )}
         </div>
+        )}
+
+        {/* LOGS TERMINAL */}
+        {activeTab === 'logs' && (
+          <div className="card">
+            <div className="card-hdr">
+              <span className="card-ttl">🖥️ Terminal d'Activité & Erreurs</span>
+              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Rafraîchissement auto • Purge auto des logs +30j</span>
+            </div>
+            <LogsTerminal toast={toast} />
+          </div>
+        )}
+
       </div>
     </div>
   );
