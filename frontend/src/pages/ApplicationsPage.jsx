@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { SBadge } from '../components/SBadge';
 import { KanbanBoard } from '../components/KanbanBoard';
+import { SwipeMode } from '../components/SwipeMode';
 
 export function ApplicationsPage({ toast }) {
   const [apps, setApps] = useState(null);
@@ -9,6 +10,7 @@ export function ApplicationsPage({ toast }) {
   const [sel, setSel] = useState(null);
   const [gen, setGen] = useState(false);
   const [view, setView] = useState(localStorage.getItem('appView') || 'kanban');
+  const [swipeMode, setSwipeMode] = useState(false);
 
   const load = () => api('/api/applications/').then(r => r?.json()).then(d => d && setApps(d));
   useEffect(() => { load(); }, []);
@@ -105,8 +107,23 @@ export function ApplicationsPage({ toast }) {
          <div className="view-toggle" style={{ display: 'flex', background: 'var(--surface2)', padding: 2, borderRadius: 8 }}>
             <button className={`btn btn-sm ${view === 'list' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('list'); localStorage.setItem('appView', 'list'); }}>☰</button>
             <button className={`btn btn-sm ${view === 'kanban' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('kanban'); localStorage.setItem('appView', 'kanban'); }}>◈</button>
+            <button
+              className="btn btn-sm btn-mint"
+              style={{ border: 'none', fontSize: 15 }}
+              onClick={() => setSwipeMode(true)}
+              title="Mode Swipe"
+            >🃏</button>
          </div>
        </div>
+
+       {/* SWIPE MODE */}
+       {swipeMode && apps && (
+         <SwipeMode
+           apps={apps}
+           onStatusChange={updateStatus}
+           onClose={() => { setSwipeMode(false); load(); }}
+         />
+       )}
 
        {view === 'kanban' && apps && (
          <KanbanBoard apps={apps} onStatusChange={updateStatus} onDetails={loadDet} />
