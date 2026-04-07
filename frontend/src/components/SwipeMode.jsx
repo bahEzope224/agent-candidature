@@ -251,8 +251,15 @@ function SwipeCard({ card, onSwipe, isTop }) {
         opacity: upOpacity, transition: 'opacity 0.1s',
       }}>⏭ Passer</div>
 
-      {/* Card Content */}
-      <div style={{ flex: 1, padding: '28px 24px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Card Content - Scrollable area */}
+      <div 
+        onTouchStart={e => e.stopPropagation()} // Ignore swipe when starting inside content
+        style={{ 
+          flex: 1, padding: '24px 22px 24px', display: 'flex', flexDirection: 'column', gap: 12,
+          overflowY: 'auto', overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
         {/* Company logo placeholder */}
         <div style={{
           width: 56, height: 56, borderRadius: 16, background: 'var(--surface2)',
