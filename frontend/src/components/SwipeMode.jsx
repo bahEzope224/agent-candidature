@@ -336,7 +336,7 @@ const STATUS_MAP = {
 };
 
 // ── Main SwipeMode Component ──────────────────────────────────
-export function SwipeMode({ apps, onStatusChange, onClose }) {
+export function SwipeMode({ apps, onStatusChange, onClose, showClose = true }) {
   const [queue, setQueue] = useState(() => (apps || []).filter(a =>
     !['offer', 'refused', 'archived'].includes(a.status)
   ));
@@ -345,15 +345,19 @@ export function SwipeMode({ apps, onStatusChange, onClose }) {
     return !localStorage.getItem('swipe_tutorial_seen');
   });
   const [done, setDone] = useState(false);
+  const [history, setHistory] = useState([]);
 
   const handleSwipe = useCallback(async (card, dir, actions) => {
     const actionKey = dir === 'right' ? actions?.right?.key
                     : dir === 'left'  ? actions?.left?.key
                     : null; // up = skip
 
+    const originalStatus = card.status;
+
     if (actionKey && actionKey !== 'skip') {
       const mapped = STATUS_MAP[actionKey];
       if (mapped) {
+        setHistory(h => [{ card, originalStatus, actionKey }, ...h].slice(0, 10)); // keep last 10
         if (mapped.apiAction) {
           await api(`/api/applications/${card.id}${mapped.apiAction}`, { method: 'PATCH' }).catch(() => {});
         } else {
@@ -365,6 +369,9 @@ export function SwipeMode({ apps, onStatusChange, onClose }) {
         const msgKey = isPositive ? MESSAGES.positive[actionKey] : MESSAGES.negative[actionKey];
         if (msgKey) setFeedback({ key: actionKey });
       }
+    } else {
+      // even for skipping, we can track history to allow undoing the "skip"
+      setHistory(h => [{ card, originalStatus, actionKey: 'skip' }, ...h].slice(0, 10));
     }
 
     setQueue(q => {
@@ -372,7 +379,21 @@ export function SwipeMode({ apps, onStatusChange, onClose }) {
       if (next.length === 0) setTimeout(() => setDone(true), 400);
       return next;
     });
-  }, [onStatusChange]);
+  }, [onStatusChange, history]);
+
+  const handleUndo = async () => {
+    if (history.length === 0) return;
+    const last = history[0];
+    setHistory(h => h.slice(1));
+    
+    if (last.actionKey !== 'skip') {
+      await api(`/api/applications/${last.card.id}/status?status=${last.originalStatus}`, { method: 'PATCH' }).catch(() => {});
+      onStatusChange?.(last.card.id, last.originalStatus);
+    }
+
+    setQueue(q => [last.card, ...q]);
+    setDone(false);
+  };
 
   const dismissTutorial = () => {
     localStorage.setItem('swipe_tutorial_seen', '1');
@@ -410,10 +431,12 @@ export function SwipeMode({ apps, onStatusChange, onClose }) {
             onClick={() => setShowTutorial(true)}
             style={{ padding: '6px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-dim)', fontSize: 12, cursor: 'pointer' }}
           >? Aide</button>
-          <button
-            onClick={onClose}
-            style={{ padding: '6px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}
-          >✕</button>
+          {showClose && (
+            <button
+              onClick={onClose}
+              style={{ padding: '6px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}
+            >✕</button>
+          )}
         </div>
       </div>
 
@@ -473,28 +496,44 @@ export function SwipeMode({ apps, onStatusChange, onClose }) {
         if (!actions) return null;
         return (
           <div style={{
-            padding: '16px 24px 32px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 12,
-            flexShrink: 0,
+            padding: '16px 24px 32px', display: 'grid', gridTemplateColumns: 'min-content 1fr min-content 1fr min-content', gap: 12,
+            alignItems: 'center', flexShrink: 0,
           }}>
             <button
               onClick={() => handleSwipe(topCard, 'left', actions)}
               style={{
-                padding: '14px', borderRadius: 18, border: '2px solid #e05c5c',
-                background: 'rgba(224,92,92,0.1)', color: '#e05c5c', fontSize: 22, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 58, height: 58, borderRadius: '50%', border: '2px solid #e05c5c',
+                background: 'rgba(224,92,92,0.1)', color: '#e05c5c', fontSize: 24, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.1s',
               }}>✕</button>
+
+            <button
+              onClick={handleUndo}
+              disabled={history.length === 0}
+              style={{
+                width: 44, height: 44, borderRadius: '50%', border: '1px solid var(--border)',
+                background: 'var(--surface)', color: history.length > 0 ? 'var(--warn)' : 'var(--text-dim)',
+                fontSize: 18, cursor: history.length > 0 ? 'pointer' : 'default', transition: 'all 0.2s',
+                opacity: history.length > 0 ? 1 : 0.4,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>↺</button>
+
             <button
               onClick={() => handleSwipe(topCard, 'up', actions)}
               style={{
-                padding: '14px 20px', borderRadius: 18, border: '1px solid var(--border)',
-                background: 'var(--surface)', color: 'var(--text-dim)', fontSize: 18, cursor: 'pointer',
+                width: 50, height: 50, borderRadius: '50%', border: '1px solid var(--border)',
+                background: 'var(--surface)', color: 'var(--text-dim)', fontSize: 20, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>⏭</button>
+
+            <div style={{ width: 44 }}></div> {/* Spacer to keep 5 slots balanced */}
+
             <button
               onClick={() => handleSwipe(topCard, 'right', actions)}
               style={{
-                padding: '14px', borderRadius: 18, border: '2px solid #2db87a',
-                background: 'rgba(45,184,122,0.12)', color: '#2db87a', fontSize: 22, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 58, height: 58, borderRadius: '50%', border: '2px solid #2db87a',
+                background: 'rgba(45,184,122,0.12)', color: '#2db87a', fontSize: 24, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.1s',
               }}>✓</button>
           </div>
         );

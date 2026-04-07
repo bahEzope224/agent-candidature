@@ -4,13 +4,28 @@ import { SBadge } from '../components/SBadge';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { SwipeMode } from '../components/SwipeMode';
 
+const isMobile = () => window.innerWidth < 768;
+
 export function ApplicationsPage({ toast }) {
   const [apps, setApps] = useState(null);
   const [filter, setFilter] = useState('all');
   const [sel, setSel] = useState(null);
   const [gen, setGen] = useState(false);
-  const [view, setView] = useState(localStorage.getItem('appView') || 'kanban');
-  const [swipeMode, setSwipeMode] = useState(false);
+  const [mobile, setMobile] = useState(isMobile());
+  const [view, setView] = useState(() => isMobile() ? 'swipe' : (localStorage.getItem('appView') || 'kanban'));
+  const [swipeMode, setSwipeMode] = useState(() => isMobile());
+
+  // Écoute le redimensionnement
+  useEffect(() => {
+    const handler = () => {
+      const m = isMobile();
+      setMobile(m);
+      if (!m) { setSwipeMode(false); setView(localStorage.getItem('appView') || 'kanban'); }
+      else { setSwipeMode(true); }
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   const load = () => api('/api/applications/').then(r => r?.json()).then(d => d && setApps(d));
   useEffect(() => { load(); }, []);
@@ -96,40 +111,45 @@ export function ApplicationsPage({ toast }) {
           </button>
         </div>
       </div>
-       <div className="filter-bar" style={{ justifyContent: 'space-between' }}>
-         <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
-           {FILTERS.map(f => (
-             <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>
-               {f.l}
-             </button>
-           ))}
-         </div>
-         <div className="view-toggle" style={{ display: 'flex', background: 'var(--surface2)', padding: 2, borderRadius: 8 }}>
-            <button className={`btn btn-sm ${view === 'list' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('list'); localStorage.setItem('appView', 'list'); }}>☰</button>
-            <button className={`btn btn-sm ${view === 'kanban' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('kanban'); localStorage.setItem('appView', 'kanban'); }}>◈</button>
+        <div className="filter-bar" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+            {FILTERS.map(f => (
+              <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>
+                {f.l}
+              </button>
+            ))}
+          </div>
+
+          {!mobile ? (
+            <div className="view-toggle" style={{ display: 'flex', background: 'var(--surface2)', padding: 2, borderRadius: 8 }}>
+              <button className={`btn btn-sm ${view === 'list' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('list'); localStorage.setItem('appView', 'list'); }}>☰</button>
+              <button className={`btn btn-sm ${view === 'kanban' ? 'btn-primary' : 'btn-ghost'}`} style={{ border: 'none' }} onClick={() => { setView('kanban'); localStorage.setItem('appView', 'kanban'); }}>◈</button>
+            </div>
+          ) : (
             <button
               className="btn btn-sm btn-mint"
-              style={{ border: 'none', fontSize: 15 }}
+              style={{ border: 'none', fontSize: 13, fontWeight: 700, borderRadius: 8, padding: '6px 12px' }}
               onClick={() => setSwipeMode(true)}
-              title="Mode Swipe"
-            >🃏</button>
-         </div>
-       </div>
+            >🃏 Swipe</button>
+          )}
+        </div>
 
-       {/* SWIPE MODE */}
-       {swipeMode && apps && (
-         <SwipeMode
-           apps={apps}
-           onStatusChange={updateStatus}
-           onClose={() => { setSwipeMode(false); load(); }}
-         />
-       )}
+        {/* SWIPE MODE */}
+        {swipeMode && apps && (
+          <SwipeMode
+            apps={apps}
+            onStatusChange={updateStatus}
+            onClose={() => mobile ? null : setSwipeMode(false)}
+            showClose={!mobile}
+          />
+        )}
 
-       {view === 'kanban' && apps && (
-         <KanbanBoard apps={apps} onStatusChange={updateStatus} onDetails={loadDet} />
-       )}
+        {/* Kanban/List: Desktop only */}
+        {!mobile && view === 'kanban' && apps && (
+          <KanbanBoard apps={apps} onStatusChange={updateStatus} onDetails={loadDet} />
+        )}
 
-       {view === 'list' && (
+        {!mobile && view === 'list' && (
          <div className="card">
            {!apps ? (
              <div className="loading"><span className="spinner"></span>Chargement...</div>
