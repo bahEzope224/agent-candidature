@@ -186,6 +186,107 @@ function LoginPage({ onLogin, onSetup }) {
   );
 }
 
+/* ── LOGS TERMINAL ─────────────────────────────────────────── */
+function LogsTerminal({ toast }) {
+  const [logs, setLogs] = useState(null);
+  const [filter, setFilter] = useState('ALL');
+  const [expanded, setExpanded] = useState(null);
+  const bottomRef = useRef(null);
+
+  const loadLogs = () =>
+    adminApi('/api/admin/logs?limit=200').then(r => r?.json()).then(d => d && setLogs(d));
+
+  const purgeLogs = async () => {
+    if (!confirm('Supprimer tous les logs de plus de 30 jours ?')) return;
+    const r = await adminApi('/api/admin/logs/purge', { method: 'DELETE' });
+    if (r?.ok) { toast.ok('Logs anciens purgés'); loadLogs(); }
+    else toast.err('Erreur lors de la purge');
+  };
+
+  useEffect(() => {
+    loadLogs();
+    const t = setInterval(loadLogs, 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  const LEVELS = ['ALL', 'FATAL', 'WARNING', 'INFO'];
+  const LEVEL_COLOR = { FATAL: '#e05c5c', WARNING: '#e0a050', INFO: '#5ca8e0', DEFAULT: '#aaa' };
+  const LEVEL_ICON = { FATAL: '🔴', WARNING: '🟡', INFO: '🔵' };
+
+  const filtered = (logs || []).filter(l => filter === 'ALL' || l.level === filter);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {LEVELS.map(lv => (
+            <button
+              key={lv}
+              onClick={() => setFilter(lv)}
+              style={{
+                padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+                background: filter === lv ? (LEVEL_COLOR[lv] || 'var(--mint)') : 'var(--surface)',
+                color: filter === lv ? '#fff' : 'var(--text-dim)',
+                transition: 'all 0.15s',
+              }}
+            >{lv}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-sm btn-sec" onClick={loadLogs}>↻ Actualiser</button>
+          <button className="btn btn-sm btn-danger" onClick={purgeLogs}>🗑 Purger (+30j)</button>
+        </div>
+      </div>
+
+      <div style={{
+        background: '#0d1117', borderRadius: 12, padding: '14px 18px',
+        fontFamily: 'DM Mono, monospace', fontSize: 11.5, lineHeight: 1.7,
+        maxHeight: 520, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        {logs === null ? (
+          <div style={{ color: '#555', textAlign: 'center', padding: '40px 0' }}>Chargement des logs...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ color: '#555', textAlign: 'center', padding: '40px 0' }}>Aucun log{filter !== 'ALL' ? ` de niveau ${filter}` : ''} pour le moment.</div>
+        ) : (
+          filtered.map((log, i) => {
+            const col = LEVEL_COLOR[log.level] || LEVEL_COLOR.DEFAULT;
+            const ico = LEVEL_ICON[log.level] || '⚪';
+            const isOpen = expanded === i;
+            const date = new Date(log.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            return (
+              <div key={log.id || i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '6px 0' }}>
+                <div
+                  onClick={() => setExpanded(isOpen ? null : i)}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', userSelect: 'none' }}
+                >
+                  <span style={{ color: '#555', whiteSpace: 'nowrap', fontSize: 10 }}>{date}</span>
+                  <span style={{ color: col, fontWeight: 700, whiteSpace: 'nowrap' }}>{ico} {log.level}</span>
+                  <span style={{ color: '#8b949e', whiteSpace: 'nowrap' }}>[{log.action}]</span>
+                  <span style={{ color: '#cdd9e5', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isOpen ? 'pre-wrap' : 'nowrap' }}>
+                    {log.details?.email || log.details?.error || log.details?.url || '-'}
+                  </span>
+                  <span style={{ color: '#555', fontSize: 10 }}>{isOpen ? '▲' : '▼'}</span>
+                </div>
+                {isOpen && (
+                  <pre style={{
+                    margin: '6px 0 6px 26px', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
+                    borderRadius: 8, color: '#adbac7', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                    maxHeight: 240, overflowY: 'auto',
+                  }}>{JSON.stringify(log.details, null, 2)}</pre>
+                )}
+              </div>
+            );
+          })
+        )}
+        <div ref={bottomRef} />
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>
+        {filtered.length} log(s) • Rafraîchissement automatique toutes les 15s
+      </div>
+    </div>
+  );
+}
+
 /* ── ADMIN PANEL (dashboard) ── */
 function Panel({ toast }) {
   const [activeTab, setActiveTab] = useState('users');
