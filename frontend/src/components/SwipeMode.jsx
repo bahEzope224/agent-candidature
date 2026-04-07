@@ -293,7 +293,7 @@ function SwipeCard({ card, onSwipe, isTop }) {
           {card.status?.replace(/_/g, ' ')}
         </div>
 
-        {card.email_body && (
+        {(card.status === 'follow_up_needed' ? card.followup_email_body : card.email_body) && (
           <div style={{
             fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.6,
             overflow: 'hidden', display: '-webkit-box',
@@ -301,7 +301,7 @@ function SwipeCard({ card, onSwipe, isTop }) {
             background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
             marginTop: 4, transition: 'max-height 0.3s ease',
           }}>
-            {card.email_body}
+            {card.status === 'follow_up_needed' ? card.followup_email_body : card.email_body}
           </div>
         )}
 
@@ -323,18 +323,29 @@ function SwipeCard({ card, onSwipe, isTop }) {
             padding: '4px 0', borderTop: '1px dashed var(--border)',
             animation: 'fadeIn 0.2s ease'
           }}>
-            {card.email_body && (
+            {card.status === 'follow_up_needed' && card.followup_email_body ? (
+              <button 
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.followup_email_body); alert('Mail de relance copié !'); }}
+                style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--sec)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+              >📋 Copier la Relance</button>
+            ) : card.email_body ? (
               <button 
                 onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.email_body); alert('Email copié !'); }}
                 style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--mint)', color: '#fff', fontSize: 11, fontWeight: 600 }}
               >📋 Copier l'Email</button>
+            ) : (
+              <div style={{ fontSize: 10.5, color: 'var(--text-dim)', padding: 4 }}>Mail non généré.</div>
             )}
-            {card.cover_letter_text && (
+
+            {card.cover_letter ? (
               <button 
-                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.cover_letter_text); alert('Lettre copiée !'); }}
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.cover_letter); alert('Lettre copiée !'); }}
                 style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--sec)', color: '#fff', fontSize: 11, fontWeight: 600 }}
               >📄 Copier la Lettre</button>
+            ) : (
+              <div style={{ fontSize: 10.5, color: 'var(--text-dim)', padding: 4 }}>Lettre non générée.</div>
             )}
+
             {card.offer_url && (
               <a 
                 href={card.offer_url} target="_blank" rel="noreferrer"
@@ -342,7 +353,7 @@ function SwipeCard({ card, onSwipe, isTop }) {
                   padding: '8px', borderRadius: 8, textAlign: 'center', textDecoration: 'none',
                   background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 11, fontWeight: 600 
                 }}
-              >🔗 Ouvrir l'offre</a>
+              >🔗 Voir l'offre & candidater</a>
             )}
           </div>
         )}

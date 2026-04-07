@@ -69,7 +69,8 @@ async def list_applications(
             "confidence": a.llm_confidence_score,
             "email_subject": a.email_subject,
             "email_body": a.email_body,
-            "cover_letter_text": a.cover_letter_text,
+            "cover_letter": a.cover_letter_text,
+            "followup_email_body": a.followup_email_body,
             # Indique depuis combien de jours la candidature est dans ce statut
             "days_in_status": (now - a.sent_at).days if a.sent_at else None,
             "sent_at": str(a.sent_at) if a.sent_at else None,
@@ -107,7 +108,7 @@ async def pending_followups(
             "days_since_sent": (datetime.utcnow() - a.sent_at).days if a.sent_at else 0,
             # Mail de relance prêt à copier-coller
             "email_body": a.email_body,
-            "cover_letter_text": a.cover_letter_text,
+            "cover_letter": a.cover_letter_text,
             "followup_email_body": a.followup_email_body,
             "followup_email_subject": f"Re : {a.email_subject}" if a.email_subject else "Relance candidature",
         }
