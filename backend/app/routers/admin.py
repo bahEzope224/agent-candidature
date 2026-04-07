@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.application import Application
 from app.models.job_offer import JobOffer
 from app.models.profile import Profile
+from app.models.system_log import SystemLog
 from app.services.auth_service import get_current_user
 import uuid
 
@@ -266,4 +267,53 @@ async def migrate_database(db: AsyncSession = Depends(get_db)):
             await db.rollback()
             results.append({"query": q, "status": "failed_or_already_exists", "error": str(e)})
 
+    # Création table logs (si manquante)
+    create_logs_table = """
+    CREATE TABLE IF NOT EXISTS system_logs (
+        id UUID PRIMARY KEY,
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        level VARCHAR(50) NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        details JSON,
+        created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (now() at time zone 'utc')
+    );
+    """
+    try:
+        await db.execute(text(create_logs_table))
+        await db.commit()
+        results.append({"query": "CREATE TABLE system_logs", "status": "success"})
+    except Exception as e:
+        await db.rollback()
+        results.append({"query": "CREATE TABLE system_logs", "status": "failed", "error": str(e)})
+
     return {"message": "Migration attempts finished", "results": results}
+
+
+# ── LOGS SYSTÈME ─────────────────────────────────────────────
+@router.get("/logs")
+async def get_system_logs(
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """Récupère les derniers logs système"""
+    result = await db.execute(
+        select(SystemLog).order_by(SystemLog.created_at.desc()).limit(limit)
+    )
+    logs = result.scalars().all()
+    return logs
+
+
+@router.delete("/logs/purge")
+async def purge_logs(
+    older_than_days: int = 30,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+):
+    """Supprime les logs anciens"""
+    limit_date = datetime.utcnow() - timedelta(days=older_than_days)
+    await db.execute(
+        sql_delete(SystemLog).where(SystemLog.created_at < limit_date)
+    )
+    await db.commit()
+    return {"message": f"Logs plus vieux que {older_than_days} jours supprimés"}
