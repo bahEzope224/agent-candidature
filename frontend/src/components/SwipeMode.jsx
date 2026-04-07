@@ -506,7 +506,7 @@ export function SwipeMode({ apps, onStatusChange, onClose, showClose = true }) {
             <div style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center' }}>
               Tu as géré toutes tes candidatures. Excellent travail !
             </div>
-            <button onClick={() => window.location.href = '/'} style={{
+            <button onClick={onClose} style={{
               padding: '14px 32px', borderRadius: 16, border: 'none',
               background: 'var(--mint)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
             }}>Retour au tableau 📋</button>

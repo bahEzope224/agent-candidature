@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { SBadge } from '../components/SBadge';
 import { KanbanBoard } from '../components/KanbanBoard';
@@ -14,6 +15,7 @@ export function ApplicationsPage({ toast }) {
   const [mobile, setMobile] = useState(isMobile());
   const [view, setView] = useState(() => isMobile() ? 'swipe' : (localStorage.getItem('appView') || 'kanban'));
   const [swipeMode, setSwipeMode] = useState(() => isMobile());
+  const navigate = useNavigate();
 
   // Écoute le redimensionnement
   useEffect(() => {
@@ -139,7 +141,10 @@ export function ApplicationsPage({ toast }) {
           <SwipeMode
             apps={apps}
             onStatusChange={updateStatus}
-            onClose={() => mobile ? null : setSwipeMode(false)}
+            onClose={() => {
+              if (mobile) navigate('/dashboard');
+              else setSwipeMode(false);
+            }}
             showClose={!mobile}
           />
         )}
