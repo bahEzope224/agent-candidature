@@ -3,74 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&display=swap');
     body {
-      width: 300px;
-      padding: 16px;
-      font-family: 'Segoe UI', sans-serif;
-      background: #fdf8f0;
+      width: 320px;
+      padding: 20px;
+      font-family: 'DM Sans', sans-serif;
+      background: #fdfaf5;
       color: #1e1a14;
       margin: 0;
     }
+    h1, .logo, .title { font-family: 'Syne', sans-serif; }
     .header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
+      justify-content: space-between;
+      margin-bottom: 24px;
     }
-    .logo {
-      font-weight: 800;
-      font-size: 18px;
-    }
+    .logo { font-weight: 800; font-size: 20px; }
     .logo span { color: #2db87a; }
     .card {
       background: #fff;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(160, 140, 110, 0.2);
-      margin-bottom: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(160, 140, 110, 0.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      margin-bottom: 20px;
     }
-    .title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
-    .company { font-size: 12px; color: #6b5c42; }
+    .title { font-weight: 700; font-size: 15px; margin-bottom: 6px; line-height: 1.4; }
+    .company { font-size: 13px; color: #6b5c42; font-weight: 500; }
     .btn {
       width: 100%;
-      padding: 10px;
-      border-radius: 8px;
+      padding: 12px;
+      border-radius: 12px;
       border: none;
       background: #2db87a;
       color: white;
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 14px;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 10px rgba(45, 184, 122, 0.2);
     }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .status { margin-top: 10px; font-size: 11px; text-align: center; }
-    .settings-btn { position: absolute; top: 16px; right: 16px; cursor: pointer; font-size: 14px; opacity: 0.6; }
-    .settings-btn:hover { opacity: 1; }
-    .input { width: 100%; padding: 8px; border-radius: 6px; border: 1.5px solid rgba(160, 140, 110, 0.2); margin-bottom: 10px; font-size: 12px; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(45, 184, 122, 0.3); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .status { margin-top: 14px; font-size: 12px; text-align: center; font-weight: 500; min-height: 18px; }
+    .settings-btn { cursor: pointer; font-size: 18px; transition: rotate 0.3s; }
+    .settings-btn:hover { rotate: 30deg; }
+    .input { width: 100%; padding: 10px; border-radius: 10px; border: 2px solid #eee; margin-bottom: 12px; font-size: 13px; box-sizing: border-box; outline: none; }
+    .input:focus { border-color: #2db87a; }
+    .footer-link { display: block; text-align: center; font-size: 11px; color: #8b7355; text-decoration: none; margin-top: 20px; font-weight: 600; }
+    .footer-link:hover { color: #2db87a; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; background: rgba(45, 184, 122, 0.1); color: #2db87a; font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
   </style>
 </head>
 <body>
-  <div class="settings-btn" id="open-settings">⚙️</div>
   <div class="header">
     <div class="logo">Job<span>Agent</span></div>
+    <div class="settings-btn" id="open-settings">⚙️</div>
   </div>
 
   <div id="main-view">
     <div id="job-card" class="card" style="display:none;">
+      <div class="badge">Nouvelle Offre</div>
       <div id="job-title" class="title">...</div>
       <div id="job-company" class="company">...</div>
     </div>
-    <div id="loading">Recherche d'offres en cours...</div>
+    <div id="loading" style="text-align: center; padding: 20px 0; color: #8b7355; font-size: 13px;">Recherche d'offres...</div>
     <button id="save-btn" class="btn" style="display:none;">Sauvegarder l'offre</button>
     <div id="status" class="status"></div>
+    <a href="https://agent-candidature.vercel.app/profile" target="_blank" class="footer-link">Gérer mon compte JobAgent</a>
   </div>
 
   <div id="settings-view" style="display:none;">
-    <div class="title" style="margin-bottom: 15px;">Réglages</div>
-    <label style="font-size: 10px; text-transform: uppercase; color: #6b5c42; display: block; margin-bottom: 4px;">Token API (depuis Profil)</label>
-    <input type="password" id="token-input" class="input" placeholder="Votre token bearer...">
+    <div class="title" style="margin-bottom: 15px;">Configuration</div>
+    <label style="font-size: 11px; font-weight: 700; color: #1e1a14; display: block; margin-bottom: 8px;">Token API</label>
+    <input type="password" id="token-input" class="input" placeholder="Collez votre token ici...">
+    <p style="font-size: 11px; color: #6b5c42; line-height: 1.5; margin-bottom: 15px;">Le token permet de lier l'extension à votre compte. Vous le trouverez dans votre profil sur le site web.</p>
     <button id="save-settings" class="btn">Enregistrer</button>
-    <button id="back-btn" class="btn" style="background:#8b7355; margin-top: 5px;">Retour</button>
+    <button id="back-btn" class="btn" style="background:#8b7355; margin-top: 8px;">Retour</button>
   </div>
 
   <script src="popup.js"></script>

@@ -6,7 +6,8 @@
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -26,6 +27,9 @@
     }
   ],
   "host_permissions": [
-    "https://agent-job-1.onrender.com/*"
+    "https://agent-job-1.onrender.com/*",
+    "https://agent-candidature.vercel.app/*",
+    "*://*.linkedin.com/*",
+    "*://*.welcomeothejungle.com/*"
   ]
 }

@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Job Agent API", version="1.0.0", lifespan=lifespan)
 
-# CORS — autorise le frontend à appeler l'API
+# CORS — autorise le frontend et l'extension Chrome (dynamique) à appeler l'API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -48,6 +48,7 @@ app.add_middleware(
         "https://agent-candidature.vercel.app",
         "http://localhost:5173"
     ],
+    allow_origin_regex="chrome-extension://.*",  # Autorise toutes les extensions chrome
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
