@@ -329,9 +329,9 @@ function SwipeCard({ card, onSwipe, isTop }) {
                 style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--mint)', color: '#fff', fontSize: 11, fontWeight: 600 }}
               >📋 Copier l'Email</button>
             )}
-            {card.cover_letter && (
+            {card.cover_letter_text && (
               <button 
-                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.cover_letter); alert('Lettre copiée !'); }}
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.cover_letter_text); alert('Lettre copiée !'); }}
                 style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--sec)', color: '#fff', fontSize: 11, fontWeight: 600 }}
               >📄 Copier la Lettre</button>
             )}
@@ -447,7 +447,9 @@ export function SwipeMode({ apps, onStatusChange, onClose, showClose = true }) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 800,
+      position: 'fixed', top: 0, left: 0, right: 0,
+      bottom: showClose ? 0 : 72, // Hide close button means we are mobile, so leave room for nav
+      zIndex: 50,
       background: 'var(--bg)',
       display: 'flex', flexDirection: 'column',
     }}>
