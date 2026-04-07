@@ -303,10 +303,12 @@ function SwipeCard({ card, onSwipe, isTop }) {
         {(card.status === 'follow_up_needed' ? card.followup_email_body : card.email_body) && (
           <div style={{
             fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.6,
-            overflow: 'hidden', display: '-webkit-box',
-            WebkitLineClamp: showDetails ? 'unset' : '3', WebkitBoxOrient: 'vertical',
+            display: showDetails ? 'block' : '-webkit-box',
+            WebkitLineClamp: showDetails ? 'unset' : '3',
+            WebkitBoxOrient: 'vertical',
+            overflow: showDetails ? 'visible' : 'hidden',
             background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
-            marginTop: 4, transition: 'max-height 0.3s ease',
+            marginTop: 4, transition: 'all 0.3s ease',
           }}>
             {card.status === 'follow_up_needed' ? card.followup_email_body : card.email_body}
           </div>
