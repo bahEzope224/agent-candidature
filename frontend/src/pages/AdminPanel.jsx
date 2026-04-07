@@ -188,6 +188,7 @@ function LoginPage({ onLogin, onSetup }) {
 
 /* ── ADMIN PANEL (dashboard) ── */
 function Panel({ toast }) {
+  const [activeTab, setActiveTab] = useState('users');
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState(null);
   const [search, setSearch] = useState('');
