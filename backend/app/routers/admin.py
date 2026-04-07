@@ -85,19 +85,29 @@ async def get_stats(
     total_apps = await db.execute(select(func.count()).select_from(Application))
     total_jobs = await db.execute(select(func.count()).select_from(JobOffer))
 
-    # Inscriptions des 7 derniers jours
     week_ago = datetime.utcnow() - timedelta(days=7)
     new_users_week = await db.execute(
         select(func.count()).where(User.created_at >= week_ago)
     )
 
     # Candidatures par statut
-    sent_apps = await db.execute(
-        select(func.count()).where(Application.status == "sent")
-    )
-    interview_apps = await db.execute(
-        select(func.count()).where(Application.status.in_(["interview", "interview_proposed"]))
-    )
+    sent_apps = await db.execute(select(func.count()).where(Application.status.in_(["sent", "follow_up_needed", "follow_up_sent", "no_response"])))
+    interview_apps = await db.execute(select(func.count()).where(Application.status.in_(["interview", "interview_proposed"])))
+    signed_apps = await db.execute(select(func.count()).where(Application.status == "offer"))
+    refused_apps = await db.execute(select(func.count()).where(Application.status.in_(["refused", "archived"])))
+    pending_apps = await db.execute(select(func.count()).where(Application.status.in_(["to_apply", "pending_review", "ready_to_send"])))
+
+    # Historique 30 jours — inscriptions utilisateurs
+    users_history = []
+    apps_history = []
+    for i in range(29, -1, -1):
+        day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
+        day_end = day_start + timedelta(days=1)
+        label = day_start.strftime("%d/%m")
+        u_count = await db.execute(select(func.count()).where(User.created_at >= day_start, User.created_at < day_end))
+        a_count = await db.execute(select(func.count()).where(Application.created_at >= day_start, Application.created_at < day_end))
+        users_history.append({"date": label, "count": u_count.scalar() or 0})
+        apps_history.append({"date": label, "count": a_count.scalar() or 0})
 
     total = total_users.scalar() or 0
     active = active_users.scalar() or 0
@@ -106,7 +116,13 @@ async def get_stats(
     total_a = total_apps.scalar() or 0
     sent = sent_apps.scalar() or 0
     interviews = interview_apps.scalar() or 0
+    signed = signed_apps.scalar() or 0
+    refused = refused_apps.scalar() or 0
+    pending = pending_apps.scalar() or 0
     total_j = total_jobs.scalar() or 0
+
+    conversion_rate = round((interviews / sent * 100), 1) if sent > 0 else 0
+    signing_rate = round((signed / total_a * 100), 1) if total_a > 0 else 0
 
     return {
         "users": {
@@ -115,16 +131,24 @@ async def get_stats(
             "premium": premium,
             "freemium": total - premium,
             "new_this_week": new_week,
+            "history_30d": users_history,
         },
         "applications": {
             "total": total_a,
+            "pending": pending,
             "sent": sent,
             "interviews": interviews,
+            "signed": signed,
+            "refused": refused,
+            "conversion_rate": conversion_rate,
+            "signing_rate": signing_rate,
+            "history_30d": apps_history,
         },
         "jobs": {
             "total": total_j,
         },
     }
+
 
 
 # ── Activer / bloquer un compte ───────────────────────────────

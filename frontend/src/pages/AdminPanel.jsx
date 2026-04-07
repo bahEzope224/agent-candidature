@@ -287,6 +287,116 @@ function LogsTerminal({ toast }) {
   );
 }
 
+/* ── MINI SPARKLINE ─────────────────────────────────────────── */
+function Sparkline({ data, color, height = 60, label }) {
+  if (!data || data.length === 0) return null;
+  const W = 400, H = height;
+  const max = Math.max(...data.map(d => d.count), 1);
+  const pts = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - (d.count / max) * H;
+    return `${x},${y}`;
+  }).join(' ');
+  const areaPath = `M0,${H} L${data.map((d, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - (d.count / max) * H;
+    return `${x},${y}`;
+  }).join(' L')} L${W},${H} Z`;
+
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6, fontWeight: 600 }}>{label}</div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height, display: 'block' }} preserveAspectRatio="none">
+        <path d={areaPath} fill={color} opacity="0.12" />
+        <polyline points={pts} fill="none" stroke={color} strokeWidth="2" />
+        {data.map((d, i) => d.count > 0 && (
+          <circle key={i} cx={(i / (data.length - 1)) * W} cy={H - (d.count / max) * H} r="3" fill={color} />
+        ))}
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', marginTop: 4 }}>
+        <span>{data[0]?.date}</span>
+        <span>{data[data.length - 1]?.date}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── DONUT CHART ─────────────────────────────────────────────── */
+function DonutChart({ segments }) {
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  if (total === 0) return <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: 20 }}>Pas de données</div>;
+  let cumulAngle = -90;
+  const R = 70, cx = 90, cy = 90;
+
+  const describeArc = (startAngle, angle) => {
+    const sa = (startAngle * Math.PI) / 180, ea = ((startAngle + angle) * Math.PI) / 180;
+    const x1 = cx + R * Math.cos(sa), y1 = cy + R * Math.sin(sa);
+    const x2 = cx + R * Math.cos(ea), y2 = cy + R * Math.sin(ea);
+    const large = angle > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`;
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
+      <svg viewBox="0 0 180 180" style={{ width: 180, flexShrink: 0 }}>
+        {segments.map((seg, i) => {
+          if (seg.value === 0) return null;
+          const angle = (seg.value / total) * 360;
+          const path = describeArc(cumulAngle, angle);
+          cumulAngle += angle;
+          return <path key={i} d={path} fill={seg.color} opacity={0.85} />;
+        })}
+        <circle cx={cx} cy={cy} r={42} fill="var(--surface)" />
+        <text x={cx} y={cy - 6} textAnchor="middle" style={{ fontSize: 22, fontWeight: 700, fill: 'var(--text)', fontFamily: 'Syne,sans-serif' }}>{total}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" style={{ fontSize: 9, fill: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total</text>
+      </svg>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {segments.map((seg, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
+            <div style={{ flex: 1, fontSize: 12, color: 'var(--text)' }}>{seg.label}</div>
+            <div style={{ fontFamily: 'DM Mono,monospace', fontSize: 12, color: seg.color, fontWeight: 700 }}>{seg.value}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{Math.round((seg.value / total) * 100)}%</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── CHARTS PANEL ─────────────────────────────────────────────── */
+function StatsCharts({ stats }) {
+  if (!stats) return <div className="loading"><span className="spinner"></span>Chargement...</div>;
+  const a = stats.applications;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="card">
+          <div className="card-hdr"><span className="card-ttl">👥 Inscriptions (30 jours)</span></div>
+          <Sparkline data={stats.users.history_30d} color="#2db87a" height={70} label="Nouveaux utilisateurs / jour" />
+        </div>
+        <div className="card">
+          <div className="card-hdr"><span className="card-ttl">📨 Candidatures (30 jours)</span></div>
+          <Sparkline data={stats.applications.history_30d} color="#e0a050" height={70} label="Candidatures créées / jour" />
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-hdr">
+          <span className="card-ttl">📊 Funnel de conversion</span>
+          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Taux entretien {a.conversion_rate}% · Taux signature {a.signing_rate}%</span>
+        </div>
+        <DonutChart segments={[
+          { label: 'À postuler',  value: a.pending,    color: '#8b949e' },
+          { label: 'Envoyées',    value: a.sent,       color: '#5ca8e0' },
+          { label: 'Entretiens',  value: a.interviews, color: '#e0a050' },
+          { label: '签署 Signés', value: a.signed,     color: '#2db87a' },
+          { label: 'Refus',       value: a.refused,    color: '#e05c5c' },
+        ]} />
+      </div>
+    </div>
+  );
+}
+
 /* ── ADMIN PANEL (dashboard) ── */
 function Panel({ toast }) {
   const [activeTab, setActiveTab] = useState('users');
@@ -362,34 +472,41 @@ function Panel({ toast }) {
           <div className="page-sub">Gestion des utilisateurs et statistiques d'usage · JobAgent Bêta</div>
         </div>
 
-        {/* STATS */}
+        {/* KPI CARDS */}
         {!stats ? (
           <div className="loading"><span className="spinner"></span>Chargement...</div>
         ) : (
-          <div className="stats-grid">
+          <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 20 }}>
             {[
-              { c: 'c-mint', lbl: 'Utilisateurs', val: stats.users.total, sub: `${stats.users.new_this_week} cette semaine` },
-              { c: 'c-warn', lbl: 'Premium', val: stats.users.premium, sub: `${stats.users.freemium} freemium` },
-              { c: 'c-cream', lbl: 'Candidatures', val: stats.applications.total, sub: `${stats.applications.sent} envoyées · ${stats.applications.interviews} entretiens` },
-              { c: 'c-dim', lbl: 'Offres scrapées', val: stats.jobs.total, sub: `${stats.users.active} comptes actifs` },
+              { c: 'c-mint',  lbl: 'Utilisateurs',   val: stats.users.total,            sub: `+${stats.users.new_this_week} cette semaine` },
+              { c: 'c-warn',  lbl: 'Premium',         val: stats.users.premium,          sub: `${stats.users.freemium} freemium` },
+              { c: 'c-cream', lbl: 'Candidatures',    val: stats.applications.total,     sub: `${stats.applications.sent} envoyées` },
+              { c: 'c-mint',  lbl: 'Entretiens',      val: stats.applications.interviews,sub: `Taux ${stats.applications.conversion_rate}%` },
+              { c: 'c-mint',  lbl: '✅ Signés',        val: stats.applications.signed,    sub: `${stats.applications.signing_rate}% taux` },
+              { c: 'c-danger',lbl: '❌ Refus',          val: stats.applications.refused,   sub: '' },
             ].map(s => (
               <div className={`stat-card ${s.c}`} key={s.lbl}>
                 <div className="stat-lbl">{s.lbl}</div>
                 <div className="stat-val">{s.val}</div>
-                <div className="stat-sub">{s.sub}</div>
+                {s.sub && <div className="stat-sub">{s.sub}</div>}
               </div>
             ))}
           </div>
         )}
 
         {/* TABS */}
-        <div style={{ display: 'flex', gap: 4, margin: '18px 0 14px', borderBottom: '1px solid var(--border)' }}>
-          {[{ id: 'users', label: '👥 Utilisateurs' }, { id: 'logs', label: '🖥️ Logs & Erreurs' }].map(tab => (
+        <div style={{ display: 'flex', gap: 4, margin: '4px 0 14px', borderBottom: '1px solid var(--border)' }}>
+          {[
+            { id: 'users', label: '👥 Utilisateurs' },
+            { id: 'charts', label: '📊 Graphiques' },
+            { id: 'logs', label: '🖥️ Logs & Erreurs' },
+          ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 18px', background: 'none', border: 'none', borderBottom: activeTab === tab.id ? '2px solid var(--mint)' : '2px solid transparent',
+                padding: '8px 18px', background: 'none', border: 'none',
+                borderBottom: activeTab === tab.id ? '2px solid var(--mint)' : '2px solid transparent',
                 color: activeTab === tab.id ? 'var(--mint)' : 'var(--text-dim)',
                 fontWeight: activeTab === tab.id ? 700 : 400, cursor: 'pointer', fontSize: 13, transition: 'all 0.15s',
               }}
@@ -487,6 +604,11 @@ function Panel({ toast }) {
             </div>
           )}
         </div>
+        )}
+
+        {/* CHARTS TAB */}
+        {activeTab === 'charts' && (
+          <StatsCharts stats={stats} />
         )}
 
         {/* LOGS TERMINAL */}

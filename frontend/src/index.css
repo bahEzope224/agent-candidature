@@ -1566,6 +1566,14 @@
       color: var(--text-dim);
     }
 
+    /* Kanban column accent colors */
+    .kanban-col[data-col="signed"] .kanban-col-ttl { color: #2db87a; }
+    .kanban-col[data-col="signed"] .kanban-list.over { background: rgba(45,184,122,0.06); }
+    .kanban-col[data-col="refused"] .kanban-col-ttl { color: #e05c5c; }
+    .kanban-col[data-col="refused"] .kanban-list.over { background: rgba(224,92,92,0.06); }
+    .kanban-col[data-col="interview"] .kanban-col-ttl { color: #e0a050; }
+    .kanban-col[data-col="interview"] .kanban-list.over { background: rgba(224,160,80,0.06); }
+
     /* THEME TOGGLE */
     .theme-toggle {
       width: 34px;

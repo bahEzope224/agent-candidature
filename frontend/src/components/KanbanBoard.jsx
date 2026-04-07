@@ -13,11 +13,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { KanbanCard } from './KanbanCard';
 
 const COLUMNS = [
-  { id: 'to_apply', title: 'À postuler', targetStatus: 'to_apply', accepts: ['to_apply'] },
-  { id: 'sent', title: 'Candidaté', targetStatus: 'sent', accepts: ['sent', 'follow_up_needed', 'follow_up_sent', 'no_response'] },
-  { id: 'interview', title: 'Entretien', targetStatus: 'interview', accepts: ['interview', 'interview_proposed'] },
-  { id: 'done', title: 'Terminé', targetStatus: 'refused', accepts: ['refused', 'offer', 'archived'] }
+  { id: 'to_apply',  title: 'À postuler',     emoji: '📋', targetStatus: 'to_apply',  accepts: ['to_apply', 'pending_review', 'ready_to_send'] },
+  { id: 'sent',      title: 'Candidaté',       emoji: '📨', targetStatus: 'sent',      accepts: ['sent', 'follow_up_needed', 'follow_up_sent', 'no_response'] },
+  { id: 'interview', title: 'Entretien',       emoji: '🎯', targetStatus: 'interview', accepts: ['interview', 'interview_proposed'] },
+  { id: 'signed',    title: 'Contrat Signé',   emoji: '✅', targetStatus: 'offer',     accepts: ['offer'] },
+  { id: 'refused',   title: 'Refus',            emoji: '❌', targetStatus: 'refused',   accepts: ['refused', 'archived'] },
 ];
+
 
 function DroppableColumn({ col, items, onDetails }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -26,9 +28,9 @@ function DroppableColumn({ col, items, onDetails }) {
   });
 
   return (
-    <div className="kanban-col">
+    <div className="kanban-col" data-col={col.id}>
       <div className="kanban-col-hdr">
-        <span className="kanban-col-ttl">{col.title}</span>
+        <span className="kanban-col-ttl">{col.emoji} {col.title}</span>
         <span className="kanban-count">{items.length}</span>
       </div>
       <div 
