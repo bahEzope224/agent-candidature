@@ -143,6 +143,7 @@ function SwipeCard({ card, onSwipe, isTop }) {
   const currentDelta = useRef({ x: 0, y: 0 });
   const [delta, setDelta] = useState({ x: 0, y: 0 });
   const [leaving, setLeaving] = useState(null); // 'right'|'left'|'up'
+  const [showDetails, setShowDetails] = useState(false);
 
   const getActions = (status) => {
     if (['to_apply', 'pending_review', 'ready_to_send'].includes(status))
@@ -296,11 +297,53 @@ function SwipeCard({ card, onSwipe, isTop }) {
           <div style={{
             fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.6,
             overflow: 'hidden', display: '-webkit-box',
-            WebkitLineClamp: 4, WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: showDetails ? 'unset' : '3', WebkitBoxOrient: 'vertical',
             background: 'var(--surface2)', borderRadius: 10, padding: '10px 12px',
-            marginTop: 4,
+            marginTop: 4, transition: 'max-height 0.3s ease',
           }}>
-            {card.email_body.slice(0, 150)}...
+            {card.email_body}
+          </div>
+        )}
+
+        {/* Détails action */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); setShowDetails(!showDetails); }}
+          style={{
+            background: 'transparent', border: '1px solid var(--border)', borderRadius: 10,
+            padding: '6px 12px', fontSize: 11, color: 'var(--text-dim)', cursor: 'pointer',
+            marginTop: 'auto', width: 'fit-content', alignSelf: 'center'
+          }}
+        >
+          {showDetails ? '🔼 Masquer détails' : '🔽 Voir mail & lettre'}
+        </button>
+
+        {showDetails && (
+          <div style={{ 
+            marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10, 
+            padding: '4px 0', borderTop: '1px dashed var(--border)',
+            animation: 'fadeIn 0.2s ease'
+          }}>
+            {card.email_body && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.email_body); alert('Email copié !'); }}
+                style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--mint)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+              >📋 Copier l'Email</button>
+            )}
+            {card.cover_letter && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(card.cover_letter); alert('Lettre copiée !'); }}
+                style={{ padding: '8px', borderRadius: 8, border: 'none', background: 'var(--sec)', color: '#fff', fontSize: 11, fontWeight: 600 }}
+              >📄 Copier la Lettre</button>
+            )}
+            {card.offer_url && (
+              <a 
+                href={card.offer_url} target="_blank" rel="noreferrer"
+                style={{ 
+                  padding: '8px', borderRadius: 8, textAlign: 'center', textDecoration: 'none',
+                  background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 11, fontWeight: 600 
+                }}
+              >🔗 Ouvrir l'offre</a>
+            )}
           </div>
         )}
       </div>
@@ -463,7 +506,7 @@ export function SwipeMode({ apps, onStatusChange, onClose, showClose = true }) {
             <div style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center' }}>
               Tu as géré toutes tes candidatures. Excellent travail !
             </div>
-            <button onClick={onClose} style={{
+            <button onClick={() => window.location.href = '/'} style={{
               padding: '14px 32px', borderRadius: 16, border: 'none',
               background: 'var(--mint)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer',
             }}>Retour au tableau 📋</button>
