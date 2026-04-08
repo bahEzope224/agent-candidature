@@ -88,12 +88,12 @@ export function OffersPage({ toast }) {
         </div>
         <div className="hdr-actions">
           <button className="btn btn-sec btn-sm" onClick={scoreAll} disabled={scoring}>
-            {scoring ? <span className="spinner"></span> : '⚡'} Scorer
+            {scoring ? <span className="spinner"></span> : '⚡'} Matcher
           </button>
           <button className="btn btn-mint btn-sm" onClick={async () => {
-            toast.info('🔍 Scraping en cours... (30-60 sec)');
+            toast.info('🔍 Recherche en cours... (30-60 sec)');
             const r = await api('/api/jobs/scrape', { method: 'POST' });
-            if (!r || !r.ok) { toast.err('Erreur scraping'); return; }
+            if (!r || !r.ok) { toast.err('Erreur de recherche'); return; }
             let attempts = 0;
             const poll = setInterval(async () => {
               attempts++;
@@ -108,7 +108,7 @@ export function OffersPage({ toast }) {
                 toast.err('⚠ Aucune offre trouvée'); 
               }
             }, 5000);
-          }}>🔍 Scraper</button>
+          }}>🔍 Recherche d'offres</button>
           <button className="btn btn-danger btn-sm" onClick={delAll}>
             🗑 Vider {filter !== 'all' ? `(${filter})` : 'tout'}
           </button>
@@ -125,7 +125,7 @@ export function OffersPage({ toast }) {
         {!jobs ? (
           <div className="loading"><span className="spinner"></span>Chargement...</div>
         ) : filtered.length === 0 ? (
-          <div className="empty"><div className="empty-ico">🔍</div><div>Lance un scraping</div></div>
+          <div className="empty"><div className="empty-ico">🔍</div><div>Lance une recherche d'offres</div></div>
         ) : filtered.map(j => (
           <div className="list-item" key={j.id}>
             <div className="list-item-row">

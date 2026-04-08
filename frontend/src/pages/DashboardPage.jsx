@@ -35,7 +35,7 @@ export function DashboardPage({ toast, user }) {
       const d = await r.json();
       if (!r.ok) { toast.err(d.detail || 'Erreur serveur'); return; }
       if (key === 'scrape') {
-        toast.info('🔍 Scraping en cours... (30-60 sec)');
+        toast.info('🔍 Recherche d\'offres en cours... (30-60 sec)');
         let attempts = 0;
         const poll = setInterval(async () => {
           attempts++;
@@ -49,7 +49,7 @@ export function DashboardPage({ toast, user }) {
           } else if (attempts >= 12) {
             clearInterval(poll);
             setB(key, false);
-            toast.err('⚠ Scraping terminé — aucune offre trouvée');
+            toast.err('⚠ Recherche terminé — aucune offre trouvée');
           }
         }, 5000);
         return;
@@ -73,17 +73,17 @@ export function DashboardPage({ toast, user }) {
       <div className="page-header">
         <div>
           <div className="page-title">Bonjour {user?.full_name?.split(' ')[0] || 'là'} 👋</div>
-          <div className="page-sub">{gmail?.connected ? `✓ Gmail — ${gmail.email}` : '⚠ Gmail non connecté'}</div>
+          {/* <div className="page-sub">{gmail?.connected ? `✓ Gmail — ${gmail.email}` : '⚠ Gmail non connecté'}</div> */}
         </div>
         <div className="hdr-actions">
-          <button className="btn btn-sec btn-sm" disabled={busy.cls} onClick={() => action('cls', '/api/applications/classify-responses', 'POST', 'Emails classifiés')}>
+          {/* <button className="btn btn-sec btn-sm" disabled={busy.cls} onClick={() => action('cls', '/api/applications/classify-responses', 'POST', 'Emails classifiés')}>
             {busy.cls ? <span className="spinner"></span> : '📬'} Classifier
-          </button>
+          </button> */}
           <button className="btn btn-sec btn-sm" disabled={busy.score} onClick={() => action('score', '/api/jobs/score-all', 'POST')}>
-            {busy.score ? <span className="spinner"></span> : '⚡'} Scorer
+            {busy.score ? <span className="spinner"></span> : '⚡'} Matcher les offres
           </button>
           <button className="btn btn-mint btn-sm" disabled={busy.scrape} onClick={() => action('scrape', '/api/jobs/scrape', 'POST')}>
-            {busy.scrape ? <><span className="spinner"></span> En cours...</> : '🔍 Scraper'}
+            {busy.scrape ? <><span className="spinner"></span> En cours...</> : '🔍 Recherche d\'offres'}
           </button>
         </div>
       </div>
