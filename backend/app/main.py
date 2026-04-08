@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -61,6 +61,34 @@ app.include_router(applications.router, prefix="/api/applications", tags=["appli
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 
+# ── Helper: payload renvoyé au client pour toute erreur ───────
+def _error_payload(request: Request, exc: Exception) -> dict:
+    raw_message = str(exc) or "Erreur inattendue"
+    return {
+        "error": raw_message,
+        "location": {
+            "method": request.method,
+            "path": request.url.path,
+        },
+    }
+
+
+# ── Capturer les HTTPException pour renvoyer l'erreur au client ──
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    await write_log(
+        level="ERROR",
+        action="HTTP_EXCEPTION",
+        details={
+            "url": str(request.url),
+            "method": request.method,
+            "status_code": exc.status_code,
+            "error": str(exc.detail),
+        },
+    )
+    return JSONResponse(status_code=exc.status_code, content=_error_payload(request, exc))
+
+
 # ── Capturer les erreurs 500 non gérées ───────────────────────
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -75,7 +103,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "traceback": tb[-2000:],  # Limiter à 2000 caractères
         },
     )
-    return JSONResponse(status_code=500, content={"detail": "Erreur interne du serveur"})
+    return JSONResponse(status_code=500, content=_error_payload(request, exc))
 
 
 @app.get("/health")
