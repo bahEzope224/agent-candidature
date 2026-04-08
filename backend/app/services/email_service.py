@@ -144,26 +144,33 @@ def create_draft(
         return {"success": False, "error": str(e)}
 
 
-def get_recent_emails(max_results: int = 50) -> list[dict]:
-    """Récupère les emails récents de la boîte"""
+def _fetch_messages(
+    label_ids: list[str] | None = None,
+    max_results: int = 50,
+    metadata_headers: list[str] | None = None,
+) -> list[dict]:
+    """Récupère les metadata des messages Gmail selon les labels demandés."""
     try:
         service = get_gmail_service()
 
-        results = service.users().messages().list(
-            userId="me",
-            maxResults=max_results,
-            labelIds=["INBOX"],
-        ).execute()
+        params = {
+            "userId": "me",
+            "maxResults": max_results,
+        }
+        if label_ids:
+            params["labelIds"] = label_ids
+        results = service.users().messages().list(**params).execute()
 
         messages = results.get("messages", [])
         emails = []
+        headers_to_fetch = metadata_headers or ["Subject", "From", "Date", "To"]
 
         for msg in messages:
             detail = service.users().messages().get(
                 userId="me",
                 id=msg["id"],
                 format="metadata",
-                metadataHeaders=["Subject", "From", "Date"],
+                metadataHeaders=headers_to_fetch,
             ).execute()
 
             headers = {
@@ -176,6 +183,7 @@ def get_recent_emails(max_results: int = 50) -> list[dict]:
                 "thread_id": detail.get("threadId"),
                 "subject": headers.get("Subject", ""),
                 "from": headers.get("From", ""),
+                "to": headers.get("To", ""),
                 "date": headers.get("Date", ""),
                 "snippet": detail.get("snippet", ""),
             })
@@ -185,6 +193,21 @@ def get_recent_emails(max_results: int = 50) -> list[dict]:
     except HttpError as e:
         logger.error("Erreur lecture Gmail", error=str(e))
         return []
+
+
+def get_recent_messages(label_ids: list[str] | None = None, max_results: int = 50) -> list[dict]:
+    """Wrapper pour récupérer des messages avec des labels ciblés."""
+    return _fetch_messages(label_ids=label_ids, max_results=max_results)
+
+
+def get_recent_emails(max_results: int = 50) -> list[dict]:
+    """Récupère les emails récents dans la boîte de réception."""
+    return get_recent_messages(label_ids=["INBOX"], max_results=max_results)
+
+
+def get_recent_sent_messages(max_results: int = 20) -> list[dict]:
+    """Récupère les messages envoyés (label SENT) pour suivre les candidatures."""
+    return get_recent_messages(label_ids=["SENT"], max_results=max_results)
 
 
 def get_email_body(message_id: str) -> str:

@@ -208,13 +208,16 @@ export function ApplicationsPage({ toast }) {
             <div style={{ fontSize: 10, color: 'var(--text-dim)', fontFamily: 'DM Mono,monospace', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4 }}>Email</div>
             <div className="email-pre">{sel.email_body}</div>
             
-            <div style={{ display: 'flex', gap: 6, marginTop: 9, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 6, marginTop: 9, flexWrap: 'wrap', alignItems: 'center' }}>
               <SBadge s={sel.status} />
+              {sel.status === 'to_apply' && (
+                <span className="badge b-dim" style={{ fontSize: 11, padding: '3px 8px' }}>En attente de validation</span>
+              )}
               {sel.confidence && <span className="badge b-dim">Confiance : {Math.round(sel.confidence * 100)}%</span>}
             </div>
 
             <div style={{ display: 'flex', gap: 6, marginTop: 11, flexWrap: 'wrap' }}>
-              {sel.status === 'to_apply' && <button className="btn btn-mint btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-sent`, { method: 'PATCH' }); toast.ok('Marqué comme envoyé ✓'); setSel(null); load(); }}>✅ J'ai candidaté</button>}
+              {sel.status === 'to_apply' && <button className="btn btn-mint btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-sent`, { method: 'PATCH' }); toast.ok('Marqué comme envoyé ✓'); setSel(null); load(); }}>✅ J'ai postulé</button>}
               {sel.status === 'follow_up_needed' && <button className="btn btn-sec btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-followup-sent`, { method: 'PATCH' }); toast.ok('Relance confirmée ✓'); setSel(null); load(); }}>🔁 J'ai relancé</button>}
               {['sent', 'follow_up_sent', 'follow_up_needed'].includes(sel.status) && <button className="btn btn-mint btn-sm" onClick={async () => { await api(`/api/applications/${sel.id}/confirm-interview`, { method: 'PATCH' }); toast.ok('Entretien enregistré 🎯'); setSel(null); load(); }}>🎯 Entretien obtenu</button>}
               {['sent', 'follow_up_sent', 'no_response'].includes(sel.status) && <button className="btn btn-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid rgba(192,57,43,0.2)' }} onClick={async () => { await api(`/api/applications/${sel.id}/confirm-refused`, { method: 'PATCH' }); toast.info('Refus enregistré'); setSel(null); load(); }}>✕ Refus</button>}

@@ -73,7 +73,9 @@ export function DashboardPage({ toast, user }) {
       <div className="page-header">
         <div>
           <div className="page-title">Bonjour {user?.full_name?.split(' ')[0] || 'là'} 👋</div>
-          {/* <div className="page-sub">{gmail?.connected ? `✓ Gmail — ${gmail.email}` : '⚠ Gmail non connecté'}</div> */}
+          <div className="page-sub" style={{ color: 'var(--text-dim)' }}>
+            Recherche → match → génération → validation manuelle. On te guide étape par étape.
+          </div>
         </div>
         <div className="hdr-actions">
           {/* <button className="btn btn-sec btn-sm" disabled={busy.cls} onClick={() => action('cls', '/api/applications/classify-responses', 'POST', 'Emails classifiés')}>
@@ -86,6 +88,24 @@ export function DashboardPage({ toast, user }) {
             {busy.scrape ? <><span className="spinner"></span> En cours...</> : '🔍 Recherche d\'offres'}
           </button>
         </div>
+      </div>
+      <div className="workflow-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, margin: '16px 0' }}>
+        {[
+          { ico: '⚡', title: '1. Matcher', desc: 'Score tes offres pour garder les plus pertinentes.' },
+          { ico: '✨', title: '2. Générer', desc: 'Laisse GPT rédiger ton mailing + ta lettre en 1 clic.' },
+          { ico: '🚀', title: '3. Postuler', desc: 'Ouvre le lien, colle le mail, poste, puis confirme depuis Applications.' },
+        ].map(step => (
+          <div key={step.title} className="card" style={{ padding: '12px 14px', background: 'var(--surface2)', border: '1px solid rgba(15,15,15,0.08)' }}>
+            <div style={{ fontSize: 24 }}>{step.ico}</div>
+            <div style={{ fontWeight: 600, marginTop: 6 }}>{step.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{step.desc}</div>
+          </div>
+        ))}
+      </div>
+      <div className="quick-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        <button className="btn btn-mint btn-sm" onClick={() => navigate('/offers')} style={{ flex: '1 1 auto', minWidth: 150 }}>Voir les offres shortlistées</button>
+        <button className="btn btn-sec btn-sm" onClick={() => navigate('/applications')} style={{ flex: '1 1 auto', minWidth: 150 }}>Gérer mes candidatures</button>
+        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/applications?filter=pending')} style={{ flex: '1 1 auto', minWidth: 150 }}>Valider un envoi</button>
       </div>
       <div className="stats-grid">
         {[

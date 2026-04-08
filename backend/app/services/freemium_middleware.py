@@ -1,6 +1,7 @@
 """
 Utilitaires freemium — à importer dans les routers concernés.
-Incrémente les compteurs et vérifie les quotas.
+Incrémente les compteurs et vérifie les quotas
+.
 """
 from datetime import date
 from fastapi import HTTPException, status

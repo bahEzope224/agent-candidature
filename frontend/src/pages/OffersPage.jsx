@@ -8,6 +8,7 @@ export function OffersPage({ toast }) {
   const [scoring, setScoring] = useState(false);
   const [gf, setGf] = useState({});
   const [df, setDf] = useState({});
+  const [copied, setCopied] = useState({});
 
   const load = () => api('/api/jobs/').then(r => r?.json()).then(d => d && setJobs(d));
   useEffect(() => { load(); }, []);
@@ -28,15 +29,28 @@ export function OffersPage({ toast }) {
     }
   };
 
-  const gen = async id => {
-    setGf(p => ({ ...p, [id]: true }));
+  const handleApply = async job => {
+    setGf(p => ({ ...p, [job.id]: true }));
     try { 
-      await api(`/api/applications/generate/${id}`, { method: 'POST' }); 
-      toast.ok('Candidature générée !'); 
+      const r = await api(`/api/applications/generate/${job.id}`, { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) { 
+        toast.err(d.detail || 'Erreur de génération'); 
+        return;
+      }
+      await load();
+      const toCopy = `${d.email_subject || ''}\n\n${d.email_body || ''}\n\n${d.cover_letter || ''}`;
+      if (navigator.clipboard && toCopy.trim()) {
+        await navigator.clipboard.writeText(toCopy);
+        setCopied(p => ({ ...p, [job.id]: true }));
+        setTimeout(() => setCopied(p => ({ ...p, [job.id]: false })), 2200);
+      }
+      toast.info('Lettre + mail copiés, poste en attente de confirmation.');
+      if (job.url) window.open(job.url, '_blank');
     } catch { 
       toast.err('Erreur'); 
     } finally { 
-      setGf(p => ({ ...p, [id]: false })); 
+      setGf(p => ({ ...p, [job.id]: false })); 
     }
   };
 
@@ -85,6 +99,9 @@ export function OffersPage({ toast }) {
         <div>
           <div className="page-title">Offres d'emploi</div>
           <div className="page-sub">{jobs ? `${jobs.length} en base` : ''}</div>
+          <div className="page-note" style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
+            Une fois que tu as postulé via le lien, reviens ici pour glisser la carte à droite ou dans le Kanban.
+          </div>
         </div>
         <div className="hdr-actions">
           <button className="btn btn-sec btn-sm" onClick={scoreAll} disabled={scoring}>
@@ -139,13 +156,19 @@ export function OffersPage({ toast }) {
                 <span className="bdot"></span>{j.status}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 5, marginTop: 3 }}>
+            <div style={{ display: 'flex', gap: 5, marginTop: 3, alignItems: 'center' }}>
               {j.status === 'shortlisted' && (
-                <button className="btn btn-mint btn-sm" onClick={() => gen(j.id)} disabled={gf[j.id]}>
-                  {gf[j.id] ? <span className="spinner"></span> : '✨'} Candidater
-                </button>
+                <>
+                  <button className="btn btn-mint btn-sm" onClick={() => handleApply(j)} disabled={gf[j.id]}>
+                    {gf[j.id] ? <span className="spinner"></span> : '✨'} Candidater & ouvrir
+                  </button>
+                  {copied[j.id] && (
+                    <span className="badge b-mint" style={{ fontSize: 11 }}>
+                      📋 Copié
+                    </span>
+                  )}
+                </>
               )}
-              <a href={j.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">🔗 Voir</a>
               <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); delOffer(j.id); }} disabled={df[j.id]}>
                 {df[j.id] ? <span className="spinner"></span> : '🗑'}
               </button>
