@@ -1,0 +1,64 @@
+name: Versioning & Release
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Bump Version & Tag
+        id: tag_action
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch
+
+      - name: Sync versions in files
+        run: |
+          NEW_VERSION=${{ steps.tag_action.outputs.new_version }}
+          echo "Syncing projets à la version $NEW_VERSION"
+
+          # Mettre à jour le frontend
+          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" frontend/package.json
+
+          # Mettre à jour le backend
+          sed -i "s/app_version: str = \".*\"/app_version: str = \"$NEW_VERSION\"/" backend/app/config.py
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add frontend/package.json backend/app/config.py
+          git commit -m "chore(release): bump version to $NEW_VERSION [skip ci]" || echo "No changes to commit"
+          git push origin main
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_action.outputs.new_tag }}
+          name: Release ${{ steps.tag_action.outputs.new_version }}
+          body: ${{ steps.tag_action.outputs.changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Please
+        uses: google-github-actions/release-please-action@v4
+        with:
+          release-type: node
+          package-name: kolo-app
+          token: ${{ secrets.GITHUB_TOKEN }}
