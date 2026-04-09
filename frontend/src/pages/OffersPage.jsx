@@ -9,8 +9,15 @@ export function OffersPage({ toast }) {
   const [gf, setGf] = useState({});
   const [df, setDf] = useState({});
   const [copied, setCopied] = useState({});
+  const [searching, setSearching] = useState(false);
 
-  const load = () => api('/api/jobs/').then(r => r?.json()).then(d => d && setJobs(d));
+  const load = async () => {
+    const res = await api('/api/jobs/');
+    if (!res) return null;
+    const data = await res.json();
+    if (data) setJobs(data);
+    return data;
+  };
   useEffect(() => { load(); }, []);
 
   const allowedStatuses = ['shortlisted', 'ignored'];
@@ -24,13 +31,43 @@ export function OffersPage({ toast }) {
       const r = await api('/api/jobs/score-all', { method: 'POST' }); 
       const d = await r.json(); 
       toast.ok(`${d.scored} offres scorées`); 
-      load(); 
-      setFilter('shortlisted');
+      await load(); 
     } catch { 
       toast.err('Erreur'); 
     } finally { 
       setScoring(false); 
     }
+  };
+
+  const searchOffers = async () => {
+    setSearching(true);
+    toast.info('🔍 Recherche en cours... (30-60 sec)');
+    const r = await api('/api/jobs/scrape', { method: 'POST' });
+    if (!r || !r.ok) {
+      toast.err('Erreur de recherche');
+      setSearching(false);
+      return;
+    }
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      const rj = await api('/api/jobs/');
+      const jobsData = await rj.json();
+      if (jobsData && jobsData.length > 0) {
+        clearInterval(poll);
+        toast.ok(`✅ ${jobsData.length} offres !`);
+        try {
+          await scoreAll();
+          setFilter('shortlisted');
+        } finally {
+          setSearching(false);
+        }
+      } else if (attempts >= 12) {
+        clearInterval(poll);
+        toast.err('⚠ Aucune offre trouvée');
+        setSearching(false);
+      }
+    }, 5000);
   };
 
   const handleApply = async job => {
@@ -96,9 +133,6 @@ export function OffersPage({ toast }) {
     <div>
       <div className="topbar">
         <div className="topbar-brand">Offres</div>
-        <button className="btn btn-sec btn-sm" onClick={scoreAll} disabled={scoring}>
-          {scoring ? <span className="spinner"></span> : '⚡'}
-        </button>
       </div>
       <div className="page-header">
         <div>
@@ -109,31 +143,11 @@ export function OffersPage({ toast }) {
           </div>
         </div>
         <div className="hdr-actions">
-          <button className="btn btn-sec btn-sm" onClick={scoreAll} disabled={scoring}>
-            {scoring ? <span className="spinner"></span> : '⚡'} Matcher
+          <button className="btn btn-mint btn-sm" onClick={searchOffers} disabled={searching}>
+            {searching ? <span className="spinner"></span> : '🔍 Recherche d\'offres'}
           </button>
-          <button className="btn btn-mint btn-sm" onClick={async () => {
-            toast.info('🔍 Recherche en cours... (30-60 sec)');
-            const r = await api('/api/jobs/scrape', { method: 'POST' });
-            if (!r || !r.ok) { toast.err('Erreur de recherche'); return; }
-            let attempts = 0;
-            const poll = setInterval(async () => {
-              attempts++;
-              const rj = await api('/api/jobs/');
-              const jobsData = await rj.json();
-            if (jobsData && jobsData.length > 0) { 
-              clearInterval(poll); 
-              toast.ok(`✅ ${jobsData.length} offres !`); 
-              load(); 
-              setFilter('shortlisted');
-            } else if (attempts >= 12) { 
-              clearInterval(poll); 
-              toast.err('⚠ Aucune offre trouvée'); 
-            }
-            }, 5000);
-          }}>🔍 Recherche d'offres</button>
           <button className="btn btn-danger btn-sm" onClick={delAll}>
-            🗑 Vider {filter !== 'all' ? `(${filter})` : 'tout'}
+            🗑 Vider {filter === 'shortlisted' ? 'shortlistées' : 'ignorées'}
           </button>
         </div>
       </div>
