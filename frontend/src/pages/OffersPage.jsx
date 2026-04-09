@@ -167,7 +167,7 @@ export function OffersPage({ toast }) {
                   </button>
                   {copied[j.id] && (
                     <span className="badge b-mint" style={{ fontSize: 11 }}>
-                      📋 Lettre + Mail opié
+                      📋 Lettre + Mail copiés
                     </span>
                   )}
                 </>
