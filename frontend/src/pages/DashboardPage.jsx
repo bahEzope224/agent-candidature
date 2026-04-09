@@ -34,6 +34,13 @@ export function DashboardPage({ toast, user }) {
       if (!r) { toast.err('Erreur réseau'); return; }
       const d = await r.json();
       if (!r.ok) { toast.err(d.detail || 'Erreur serveur'); return; }
+      if (key === 'score') {
+        const jobsRefresh = await api('/api/jobs/');
+        if (jobsRefresh && jobsRefresh.ok) {
+          const jobsData = await jobsRefresh.json();
+          if (jobsData) setJobs(jobsData);
+        }
+      }
       if (key === 'scrape') {
         toast.info('🔍 Recherche d\'offres en cours... (30-60 sec)');
         let attempts = 0;
@@ -46,6 +53,7 @@ export function DashboardPage({ toast, user }) {
             setB(key, false);
             toast.ok(`✅ ${jobsData.length} offres trouvées !`);
             setJobs(jobsData);
+            await action('score', '/api/jobs/score-all', 'POST');
           } else if (attempts >= 12) {
             clearInterval(poll);
             setB(key, false);
@@ -78,12 +86,6 @@ export function DashboardPage({ toast, user }) {
           </div>
         </div>
         <div className="hdr-actions">
-          {/* <button className="btn btn-sec btn-sm" disabled={busy.cls} onClick={() => action('cls', '/api/applications/classify-responses', 'POST', 'Emails classifiés')}>
-            {busy.cls ? <span className="spinner"></span> : '📬'} Classifier
-          </button> */}
-          <button className="btn btn-sec btn-sm" disabled={busy.score} onClick={() => action('score', '/api/jobs/score-all', 'POST')}>
-            {busy.score ? <span className="spinner"></span> : '⚡'} Matcher les offres
-          </button>
           <button className="btn btn-mint btn-sm" disabled={busy.scrape} onClick={() => action('scrape', '/api/jobs/scrape', 'POST')}>
             {busy.scrape ? <><span className="spinner"></span> En cours...</> : '🔍 Recherche d\'offres'}
           </button>
