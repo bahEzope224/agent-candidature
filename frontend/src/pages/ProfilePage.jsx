@@ -60,16 +60,16 @@ export function ProfilePage({ toast, user }) {
   
   const initials = ((form.first_name || '')[0] || '') + ((form.last_name || '')[0] || '');
   const TABS = [
-    { k: 'info', ico: '👤', l: 'Infos' }, 
+    { k: 'info', ico: '👤', l: 'Information personnelle' }, 
     { k: 'skills', ico: '⚡', l: 'Skills' }, 
-    { k: 'search', ico: '🎯', l: 'Recherche' }, 
-    { k: 'text', ico: '✍️', l: 'Textes' }, 
-    { k: 'security', ico: '🔒', l: 'Sécurité' }
+    { k: 'search', ico: '🎯', l: 'Poste visé' }, 
+    { k: 'text', ico: '✍️', l: 'IA' }, 
+    { k: 'security', ico: '🔒', l: 'Parametre' }
   ];
 
   const profileContent = (
     <div>
-      {tab === 'information personnelle' && <div>
+      {tab === 'info' && <div>
         <div className="fsec"><div className="fsec-ttl">👤 Identité</div>
           <div className="form-row">
             <div className="form-grp"><label className="form-lbl">Prénom</label><input className="form-inp" value={form.first_name || ''} onChange={e => set('first_name', e.target.value)} /></div>
@@ -121,7 +121,7 @@ export function ProfilePage({ toast, user }) {
         </div>
       </div>}
       
-      {tab === 'IA' && <div>
+      {tab === 'text' && <div>
         <div style={{ padding: '9px 12px', background: 'var(--mint-light)', border: '1px solid var(--mint-mid)', borderRadius: 8, marginBottom: 16, fontSize: 12, color: 'var(--mint-dark)' }}>💡 Ces textes guident GPT pour personnaliser chaque candidature.</div>
         <div className="fsec"><div className="fsec-ttl">✍️ Présentation</div>
           <div className="form-grp"><label className="form-lbl">Pitch</label><textarea className="form-inp" value={form.pitch || ''} onChange={e => set('pitch', e.target.value)} placeholder="Étudiant en Master Data Science..." /></div>
@@ -130,7 +130,7 @@ export function ProfilePage({ toast, user }) {
         </div>
       </div>}
       
-      {tab === 'Paramettre' && <div>
+      {tab === 'security' && <div>
         <div className="fsec"><div className="fsec-ttl">🔒 Changer le mot de passe</div>
           {pwErr && <div className="auth-err" style={{ marginBottom: 11 }}>⚠ {pwErr}</div>}
           <div className="form-grp"><label className="form-lbl">Actuel mot de passe</label><input className="form-inp" type="password" value={pw.cur} onChange={e => setPw(p => ({ ...p, cur: e.target.value }))} /></div>
