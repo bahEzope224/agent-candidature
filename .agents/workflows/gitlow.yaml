@@ -1,0 +1,50 @@
+name: gitlow
+version: 1.0
+metadata:
+  description: Workflow Gitlow léger avec branches dédiées pour production, intégration, fonctionnalités, releases et hotfixes.
+branches:
+  main:
+    purpose: "Code prêt pour la production. Merge uniquement depuis des branches release/* ou hotfix/*."
+    protections:
+      - require-review
+      - require-ci
+  develop:
+    purpose: "Intégration des fonctionnalités validées. Base des releases."
+    protections:
+      - require-review
+      - require-ci
+  feature/*:
+    purpose: "Développement de nouvelles fonctionnalités. Fusionne dans develop via PR."
+    protections:
+      - encourage-pr
+  release/*:
+    purpose: "Stabilisation et QA avant déploiement. Merge dans main + develop."
+    protections:
+      - require-release-tests
+  hotfix/*:
+    purpose: "Correctifs urgents pour production. Merge dans main puis develop."
+    protections:
+      - expedited-review
+workflow:
+  - name: start-feature
+    steps:
+      - checkout: develop
+      - branch: feature/<nom>
+      - work: tests + validation
+  - name: integrate-feature
+    steps:
+      - open-pr: feature/* -> develop
+      - run-ci: unit + lint
+      - review: required
+  - name: release-cycle
+    steps:
+      - branch: release/vX.Y from develop
+      - stabilize: include hotfixes/test
+      - merge: release -> main, tag
+      - merge: release -> develop
+  - name: hotfix-cycle
+    steps:
+      - branch: hotfix/<objet> from main
+      - fix: verify urgent test
+      - merge: hotfix -> main
+      - merge: hotfix -> develop

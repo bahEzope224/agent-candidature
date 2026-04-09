@@ -30,6 +30,7 @@ export function OffersPage({ toast }) {
   };
 
   const handleApply = async job => {
+    const pendingWindow = job.url ? window.open(job.url, '_blank') : null;
     setGf(p => ({ ...p, [job.id]: true }));
     try { 
       const r = await api(`/api/applications/generate/${job.id}`, { method: 'POST' });
@@ -46,7 +47,9 @@ export function OffersPage({ toast }) {
         setTimeout(() => setCopied(p => ({ ...p, [job.id]: false })), 2200);
       }
       toast.info('Lettre + mail copiés, poste en attente de confirmation.');
-      if (job.url) window.open(job.url, '_blank');
+      if (!pendingWindow && job.url) {
+        window.open(job.url, '_blank');
+      }
     } catch { 
       toast.err('Erreur'); 
     } finally { 
@@ -160,11 +163,11 @@ export function OffersPage({ toast }) {
               {j.status === 'shortlisted' && (
                 <>
                   <button className="btn btn-mint btn-sm" onClick={() => handleApply(j)} disabled={gf[j.id]}>
-                    {gf[j.id] ? <span className="spinner"></span> : '✨'} Candidater & ouvrir
+                    {gf[j.id] ? <span className="spinner"></span> : '✨'} Ouvrir & Candidater 
                   </button>
                   {copied[j.id] && (
                     <span className="badge b-mint" style={{ fontSize: 11 }}>
-                      📋 Copié
+                      📋 Lettre + Mail opié
                     </span>
                   )}
                 </>

@@ -69,7 +69,7 @@ export function ProfilePage({ toast, user }) {
 
   const profileContent = (
     <div>
-      {tab === 'info' && <div>
+      {tab === 'information personnelle' && <div>
         <div className="fsec"><div className="fsec-ttl">👤 Identité</div>
           <div className="form-row">
             <div className="form-grp"><label className="form-lbl">Prénom</label><input className="form-inp" value={form.first_name || ''} onChange={e => set('first_name', e.target.value)} /></div>
@@ -121,24 +121,24 @@ export function ProfilePage({ toast, user }) {
         </div>
       </div>}
       
-      {tab === 'text' && <div>
+      {tab === 'IA' && <div>
         <div style={{ padding: '9px 12px', background: 'var(--mint-light)', border: '1px solid var(--mint-mid)', borderRadius: 8, marginBottom: 16, fontSize: 12, color: 'var(--mint-dark)' }}>💡 Ces textes guident GPT pour personnaliser chaque candidature.</div>
         <div className="fsec"><div className="fsec-ttl">✍️ Présentation</div>
           <div className="form-grp"><label className="form-lbl">Pitch</label><textarea className="form-inp" value={form.pitch || ''} onChange={e => set('pitch', e.target.value)} placeholder="Étudiant en Master Data Science..." /></div>
-          <div className="form-grp"><label className="form-lbl">Points forts</label><textarea className="form-inp" value={form.strengths || ''} onChange={e => set('strengths', e.target.value)} placeholder="Projet Kaggle Top 5%..." /></div>
+          <div className="form-grp"><label className="form-lbl">Experience / Projets</label><textarea className="form-inp" value={form.strengths || ''} onChange={e => set('strengths', e.target.value)} placeholder="Projet Kaggle Top 5%..." /></div>
           <div className="form-grp"><label className="form-lbl">Motivation</label><textarea className="form-inp" value={form.motivation || ''} onChange={e => set('motivation', e.target.value)} placeholder="Passionné par la data..." /></div>
         </div>
       </div>}
       
-      {tab === 'security' && <div>
+      {tab === 'Paramettre' && <div>
         <div className="fsec"><div className="fsec-ttl">🔒 Changer le mot de passe</div>
           {pwErr && <div className="auth-err" style={{ marginBottom: 11 }}>⚠ {pwErr}</div>}
-          <div className="form-grp"><label className="form-lbl">Actuel</label><input className="form-inp" type="password" value={pw.cur} onChange={e => setPw(p => ({ ...p, cur: e.target.value }))} /></div>
-          <div className="form-grp"><label className="form-lbl">Nouveau</label><input className="form-inp" type="password" value={pw.nxt} onChange={e => setPw(p => ({ ...p, nxt: e.target.value }))} /></div>
-          <div className="form-grp"><label className="form-lbl">Confirmer</label><input className="form-inp" type="password" value={pw.cfm} onChange={e => setPw(p => ({ ...p, cfm: e.target.value }))} /></div>
+          <div className="form-grp"><label className="form-lbl">Actuel mot de passe</label><input className="form-inp" type="password" value={pw.cur} onChange={e => setPw(p => ({ ...p, cur: e.target.value }))} /></div>
+          <div className="form-grp"><label className="form-lbl">Nouveau mot de passe</label><input className="form-inp" type="password" value={pw.nxt} onChange={e => setPw(p => ({ ...p, nxt: e.target.value }))} /></div>
+          <div className="form-grp"><label className="form-lbl">Confirmer le nouveau mot de passe</label><input className="form-inp" type="password" value={pw.cfm} onChange={e => setPw(p => ({ ...p, cfm: e.target.value }))} /></div>
           <button className="btn btn-primary" onClick={changePw} disabled={pwLoading}>{pwLoading ? <span className="spinner"></span> : '🔒'} Modifier</button>
         </div>
-        <div className="fsec"><div className="fsec-ttl">ℹ️ Protections</div>
+        <div className="fsec" style={{display:'none'}}><div className="fsec-ttl">ℹ️ Protections</div>
           {[['Chiffrement', 'bcrypt rounds=12'], ['Tokens', 'JWT 7j'], ['Sessions', 'sessionStorage — non partagé']].map(([k, v]) => (
             <div className="sec-info-row" key={k}><span className="sec-key">{k}</span><span className="sec-val">{v}</span></div>
           ))}
