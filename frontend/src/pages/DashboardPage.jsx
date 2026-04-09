@@ -93,7 +93,7 @@ export function DashboardPage({ toast, user }) {
       </div>
       <div className="workflow-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, margin: '16px 0' }}>
         {[
-          { ico: '⚡', title: '1. Matcher', desc: 'Score tes offres pour garder les plus pertinentes.' },
+          { ico: '⚡', title: '1. Recherche & scoring', desc: 'Trouve et classe automatiquement les offres les plus pertinentes.' },
           { ico: '✨', title: '2. Générer', desc: 'Laisse GPT rédiger ton mailing + ta lettre en 1 clic.' },
           { ico: '🚀', title: '3. Postuler', desc: 'Ouvre le lien, colle le mail, poste, puis confirme depuis Applications.' },
         ].map(step => (

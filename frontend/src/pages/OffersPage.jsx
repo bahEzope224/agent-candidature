@@ -5,7 +5,6 @@ import { ScoreBar } from '../components/ScoreBar';
 export function OffersPage({ toast }) {
   const [jobs, setJobs] = useState(null);
   const [filter, setFilter] = useState('shortlisted');
-  const [scoring, setScoring] = useState(false);
   const [gf, setGf] = useState({});
   const [df, setDf] = useState({});
   const [copied, setCopied] = useState({});
@@ -25,17 +24,24 @@ export function OffersPage({ toast }) {
     ? jobs.filter(j => allowedStatuses.includes(j.status) && j.status === filter)
     : [];
 
-  const scoreAll = async () => {
-    setScoring(true);
-    try { 
-      const r = await api('/api/jobs/score-all', { method: 'POST' }); 
-      const d = await r.json(); 
-      toast.ok(`${d.scored} offres scorées`); 
-      await load(); 
-    } catch { 
-      toast.err('Erreur'); 
-    } finally { 
-      setScoring(false); 
+  const scoreAll = async ({ notify = true } = {}) => {
+    try {
+      const r = await api('/api/jobs/score-all', { method: 'POST' });
+      if (!r) {
+        if (notify) toast.err('Erreur réseau');
+        return 0;
+      }
+      const d = await r.json();
+      if (!r.ok) {
+        if (notify) toast.err(d.detail || 'Erreur de scoring');
+        return 0;
+      }
+      if (notify) toast.ok(`${d.scored} offres scorées`);
+      await load();
+      return d.scored || 0;
+    } catch {
+      if (notify) toast.err('Erreur réseau');
+      return 0;
     }
   };
 
@@ -57,7 +63,10 @@ export function OffersPage({ toast }) {
         clearInterval(poll);
         toast.ok(`✅ ${jobsData.length} offres !`);
         try {
-          await scoreAll();
+          let scored;
+          do {
+            scored = await scoreAll({ notify: false });
+          } while (scored >= 10);
           setFilter('shortlisted');
         } finally {
           setSearching(false);
