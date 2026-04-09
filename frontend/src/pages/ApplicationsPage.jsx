@@ -81,15 +81,6 @@ export function ApplicationsPage({ toast }) {
     } 
   };
 
-  const FILTERS = [
-    { k: 'all', l: 'Toutes' }, 
-    { k: 'pending', l: '📋 À candidater' }, 
-    { k: 'sent', l: '📨 Envoyées' }, 
-    { k: 'followup', l: '🔁 À relancer' }, 
-    { k: 'no_response', l: '😶 Sans réponse' }, 
-    { k: 'interview', l: '🎯 Entretiens' }, 
-    { k: 'refused', l: '✕ Refus' }
-  ];
 
   return (
     <div>
