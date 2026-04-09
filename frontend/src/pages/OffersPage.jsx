@@ -4,7 +4,7 @@ import { ScoreBar } from '../components/ScoreBar';
 
 export function OffersPage({ toast }) {
   const [jobs, setJobs] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('shortlisted');
   const [scoring, setScoring] = useState(false);
   const [gf, setGf] = useState({});
   const [df, setDf] = useState({});
@@ -13,7 +13,10 @@ export function OffersPage({ toast }) {
   const load = () => api('/api/jobs/').then(r => r?.json()).then(d => d && setJobs(d));
   useEffect(() => { load(); }, []);
 
-  const filtered = jobs ? jobs.filter(j => filter === 'all' ? true : j.status === filter) : [];
+  const allowedStatuses = ['shortlisted', 'ignored'];
+  const filtered = jobs
+    ? jobs.filter(j => allowedStatuses.includes(j.status) && j.status === filter)
+    : [];
 
   const scoreAll = async () => {
     setScoring(true);
@@ -22,6 +25,7 @@ export function OffersPage({ toast }) {
       const d = await r.json(); 
       toast.ok(`${d.scored} offres scorées`); 
       load(); 
+      setFilter('shortlisted');
     } catch { 
       toast.err('Erreur'); 
     } finally { 
@@ -71,11 +75,11 @@ export function OffersPage({ toast }) {
   };
 
   const delAll = async () => {
+    const label = filter === 'shortlisted' ? 'shortlistées' : 'ignorées';
     // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Supprimer toutes les offres ${filter !== 'all' ? `(${filter})` : ''} ?`)) return;
+    if (!confirm(`Supprimer toutes les offres (${label}) ?`)) return;
     try {
-      const url = filter !== 'all' ? `/api/jobs/?status=${filter}` : '/api/jobs/';
-      await api(url, { method: 'DELETE' });
+      await api(`/api/jobs/?status=${filter}`, { method: 'DELETE' });
       toast.ok('Offres supprimées');
       load();
     } catch { 
@@ -84,10 +88,8 @@ export function OffersPage({ toast }) {
   };
 
   const FILTERS = [
-    { k: 'all', l: 'Toutes' }, 
-    { k: 'to_review', l: '🔍 À analyser' }, 
-    { k: 'shortlisted', l: '⭐ Shortlistées' }, 
-    { k: 'ignored', l: '✕ Ignorées' }
+    { k: 'shortlisted', l: '⭐ Offres shortlistées' },
+    { k: 'ignored', l: '✕ Offres ignorées' }
   ];
 
   return (
@@ -100,10 +102,10 @@ export function OffersPage({ toast }) {
       </div>
       <div className="page-header">
         <div>
-          <div className="page-title">Offres d'emploi</div>
-          <div className="page-sub">{jobs ? `${jobs.length} en base` : ''}</div>
+          <div className="page-title">Focus shortlistées</div>
+          <div className="page-sub">{jobs ? `${jobs.filter(j => allowedStatuses.includes(j.status)).length} opportunités suivies` : ''}</div>
           <div className="page-note" style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 6 }}>
-            Une fois que tu as postulé via le lien, reviens ici pour glisser la carte à droite ou dans le Kanban.
+            Après chaque recherche/match, cette page n’affiche que les offres shortlistées ou déjà ignorées. Utilise les filtres pour naviguer entre les deux vues.
           </div>
         </div>
         <div className="hdr-actions">
@@ -119,14 +121,15 @@ export function OffersPage({ toast }) {
               attempts++;
               const rj = await api('/api/jobs/');
               const jobsData = await rj.json();
-              if (jobsData && jobsData.length > 0) { 
-                clearInterval(poll); 
-                toast.ok(`✅ ${jobsData.length} offres !`); 
-                load(); 
-              } else if (attempts >= 12) { 
-                clearInterval(poll); 
-                toast.err('⚠ Aucune offre trouvée'); 
-              }
+            if (jobsData && jobsData.length > 0) { 
+              clearInterval(poll); 
+              toast.ok(`✅ ${jobsData.length} offres !`); 
+              load(); 
+              setFilter('shortlisted');
+            } else if (attempts >= 12) { 
+              clearInterval(poll); 
+              toast.err('⚠ Aucune offre trouvée'); 
+            }
             }, 5000);
           }}>🔍 Recherche d'offres</button>
           <button className="btn btn-danger btn-sm" onClick={delAll}>
@@ -137,7 +140,7 @@ export function OffersPage({ toast }) {
       <div className="filter-bar">
         {FILTERS.map(f => (
           <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>
-            {f.l} {jobs ? `(${jobs.filter(j => f.k === 'all' ? true : j.status === f.k).length})` : ''}
+            {f.l} {jobs ? `(${jobs.filter(j => j.status === f.k).length})` : ''}
           </button>
         ))}
       </div>
