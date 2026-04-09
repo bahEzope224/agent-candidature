@@ -113,7 +113,7 @@ export function ApplicationsPage({ toast }) {
           </button>
         </div>
       </div>
-        <div className="filter-bar" style={{ justifyContent: 'space-between' }}>
+        <div className="filter-bar" style={{ justifyContent: 'space-between' , display:'none'}}>
           <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
             {FILTERS.map(f => (
               <button key={f.k} className={`fbtn ${filter === f.k ? 'on' : ''}`} onClick={() => setFilter(f.k)}>
